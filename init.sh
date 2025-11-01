@@ -36,6 +36,21 @@ echo ""
 echo "Setting permissions (UID 1000:1000)..."
 echo "设置权限 (UID 1000:1000)..."
 $SUDO chown -R 1000:1000 data/
+
+# Verify permissions were set correctly
+GAME_UID=$(stat -c '%u' data/game 2>/dev/null || stat -f '%u' data/game 2>/dev/null)
+if [ "$GAME_UID" != "1000" ]; then
+    echo "❌ Failed to set permissions!"
+    echo "❌ 权限设置失败！"
+    echo ""
+    echo "This will cause 'Disk write failure' when downloading game files."
+    echo "这将导致下载游戏文件时出现'磁盘写入失败'错误。"
+    echo ""
+    echo "Please try: sudo chown -R 1000:1000 data/"
+    echo ""
+    exit 1
+fi
+
 echo "✓ Permissions set successfully"
 echo "✓ 权限设置成功"
 
