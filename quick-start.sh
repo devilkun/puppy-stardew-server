@@ -215,8 +215,8 @@ configure_steam() {
 setup_directories() {
     print_step "Step 4: Setting up data directories..."
 
-    # Create directories
-    mkdir -p data/{saves,game,steam}
+    # Create directories (including logs for log monitoring)
+    mkdir -p data/{saves,game,steam,logs}
 
     # Fix permissions (UID 1000 is the steam user in the container)
     print_info "Setting correct permissions (UID 1000)..."
@@ -227,6 +227,16 @@ setup_directories() {
     else
         print_info "Need sudo to set permissions..."
         sudo chown -R 1000:1000 data/
+    fi
+
+    # Verify permissions were set correctly
+    if [ "$(stat -c '%u' data/game 2>/dev/null || stat -f '%u' data/game 2>/dev/null)" != "1000" ]; then
+        print_error "Failed to set correct permissions!"
+        print_error "This will cause 'Disk write failure' when downloading game files."
+        echo ""
+        echo "Please run: sudo chown -R 1000:1000 data/"
+        echo ""
+        exit 1
     fi
 
     print_success "Directories created and permissions set!"

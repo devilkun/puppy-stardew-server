@@ -164,17 +164,31 @@ configure_steam() {
 setup_directories() {
     print_step "步骤 4: 设置数据目录..."
 
-    mkdir -p data/{saves,game,steam}
+    # 创建目录（包括日志监控需要的 logs 目录）
+    mkdir -p data/{saves,game,steam,logs}
 
     print_info "设置正确的权限 (UID 1000)..."
     if chown -R 1000:1000 data/ 2>/dev/null; then
+        # 验证权限是否正确设置
+        if [ "$(stat -c '%u' data/game 2>/dev/null || stat -f '%u' data/game 2>/dev/null)" != "1000" ]; then
+            print_error "权限设置失败！"
+            print_error "这将导致下载游戏文件时出现'磁盘写入失败'错误。"
+            echo ""
+            echo "请手动运行: sudo chown -R 1000:1000 data/"
+            echo ""
+            exit 1
+        fi
         print_success "目录已创建并设置权限！"
     else
         print_warning "无法设置权限，尝试使用 sudo..."
         if sudo chown -R 1000:1000 data/; then
             print_success "目录已创建并设置权限！"
         else
-            print_error "设置权限失败！请手动运行: sudo chown -R 1000:1000 data/"
+            print_error "设置权限失败！"
+            print_error "这将导致下载游戏文件时出现'磁盘写入失败'错误。"
+            echo ""
+            echo "请手动运行: sudo chown -R 1000:1000 data/"
+            echo ""
             exit 1
         fi
     fi
