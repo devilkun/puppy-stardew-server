@@ -183,10 +183,17 @@ configure_steam() {
 
     # Ask for VNC password
     echo ""
-    ask_question "Enter VNC password (max 8 chars, press Enter for default 'stardew123'):"
+    ask_question "Enter VNC password (max 8 chars, press Enter for default 'stardew1'):"
     read -r vnc_password
     if [ -z "$vnc_password" ]; then
-        vnc_password="stardew123"
+        vnc_password="stardew1"
+    fi
+
+    # Validate and truncate VNC password to 8 characters
+    if [ ${#vnc_password} -gt 8 ]; then
+        print_warning "VNC password is longer than 8 characters!"
+        print_warning "VNC protocol will truncate it to: ${vnc_password:0:8}"
+        vnc_password="${vnc_password:0:8}"
     fi
 
     # Update .env file

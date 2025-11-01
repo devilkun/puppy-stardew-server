@@ -371,11 +371,13 @@ log_info "Virtual display started on :99"
 if [ "$ENABLE_VNC" = "true" ]; then
     log_step "Step 6: Starting VNC server..."
 
-    VNC_PASSWORD=${VNC_PASSWORD:-"stardew123"}
+    VNC_PASSWORD=${VNC_PASSWORD:-"stardew1"}
 
     if [ ${#VNC_PASSWORD} -gt 8 ]; then
         log_warn "VNC password is longer than 8 characters!"
         log_warn "VNC 密码超过 8 个字符！"
+        log_warn "Truncating to 8 chars: ${VNC_PASSWORD:0:8}"
+        log_warn "自动截断为 8 个字符：${VNC_PASSWORD:0:8}"
         VNC_PASSWORD="${VNC_PASSWORD:0:8}"
     fi
 
