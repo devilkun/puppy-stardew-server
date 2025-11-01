@@ -346,8 +346,8 @@ if [ -d "/home/steam/preinstalled-mods" ]; then
         log_info "Installing preinstalled mods..."
         log_info "安装预配置模组..."
         cp -r /home/steam/preinstalled-mods/* /home/steam/stardewvalley/Mods/
-        log_success "Preinstalled mods copied successfully!"
-        log_success "预配置模组复制完成！"
+        log_info "Preinstalled mods copied successfully!"
+        log_info "预配置模组复制完成！"
     fi
 
     log_info "Installed mods:"
