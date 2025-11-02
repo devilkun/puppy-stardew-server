@@ -39,6 +39,51 @@ log_steam() {
     echo -e "${CYAN}[Steam-Guard]${NC} $1"
 }
 
+# Auto-recovery function for suspended steamcmd processes
+# steamcmd 进程自动恢复函数
+start_steamcmd_monitor() {
+    log_info "Starting steamcmd auto-recovery monitor..."
+    log_info "启动 steamcmd 自动恢复监控..."
+
+    (
+        while true; do
+            sleep 5
+
+            # Check for suspended (stopped) steamcmd processes
+            # 检查被挂起的 steamcmd 进程
+            STOPPED_PIDS=$(ps aux 2>/dev/null | grep -E 'steamcmd|Steam' | grep -v grep | awk '$8 ~ /T/ {print $2}')
+
+            if [ -n "$STOPPED_PIDS" ]; then
+                for PID in $STOPPED_PIDS; do
+                    # Verify process still exists and is actually stopped
+                    if [ -d "/proc/$PID" ]; then
+                        STATE=$(cat /proc/$PID/status 2>/dev/null | grep "State:" | awk '{print $2}')
+                        if [ "$STATE" = "T" ]; then
+                            log_warn "Detected suspended steamcmd process (PID: $PID), auto-recovering..."
+                            log_warn "检测到挂起的 steamcmd 进程 (PID: $PID)，正在自动恢复..."
+                            kill -CONT $PID 2>/dev/null && \
+                                log_info "Process $PID resumed successfully" || \
+                                log_warn "Failed to resume process $PID"
+                        fi
+                    fi
+                done
+            fi
+
+            # Stop monitoring if steamcmd is no longer running
+            # 如果 steamcmd 不再运行则停止监控
+            if ! pgrep -f "steamcmd" > /dev/null 2>&1; then
+                log_info "Steamcmd completed, stopping monitor"
+                log_info "Steamcmd 完成，停止监控"
+                break
+            fi
+        done
+    ) &
+
+    MONITOR_PID=$!
+    log_info "Auto-recovery monitor started (PID: $MONITOR_PID)"
+    log_info "自动恢复监控已启动 (PID: $MONITOR_PID)"
+}
+
 # Fix libcurl compatibility for SteamCMD
 log_step "Step 1: Setting up environment..."
 log_info "Fixing libcurl compatibility for SteamCMD..."
@@ -151,6 +196,10 @@ if [ "$GAME_DOWNLOADED" = false ]; then
 
         # Run SteamCMD in interactive mode for Steam Guard
         log_info "Starting Steam authentication with Steam Guard..."
+
+        # Start auto-recovery monitor for steamcmd
+        start_steamcmd_monitor
+
         /home/steam/steamcmd/steamcmd.sh \
             +force_install_dir /home/steam/stardewvalley \
             +login "$STEAM_USERNAME" "$STEAM_PASSWORD" \
@@ -200,6 +249,10 @@ if [ "$GAME_DOWNLOADED" = false ]; then
 
         # Run SteamCMD in interactive mode for Steam Guard
         log_info "Starting Steam authentication with Steam Guard..."
+
+        # Start auto-recovery monitor for steamcmd
+        start_steamcmd_monitor
+
         /home/steam/steamcmd/steamcmd.sh \
             +force_install_dir /home/steam/stardewvalley \
             +login "$STEAM_USERNAME" "$STEAM_PASSWORD" \
@@ -220,6 +273,10 @@ if [ "$GAME_DOWNLOADED" = false ]; then
     # If no Steam Guard, proceed with normal download
     else
         log_info "Starting Steam authentication and download..."
+
+        # Start auto-recovery monitor for steamcmd
+        start_steamcmd_monitor
+
     timeout 900 /home/steam/steamcmd/steamcmd.sh \
         +force_install_dir /home/steam/stardewvalley \
         +login "$STEAM_USERNAME" "$STEAM_PASSWORD" \
@@ -262,6 +319,10 @@ if [ "$GAME_DOWNLOADED" = false ]; then
 
         # Run SteamCMD in interactive mode for Steam Guard
         log_info "Starting Steam authentication with Steam Guard..."
+
+        # Start auto-recovery monitor for steamcmd
+        start_steamcmd_monitor
+
         /home/steam/steamcmd/steamcmd.sh \
             +force_install_dir /home/steam/stardewvalley \
             +login "$STEAM_USERNAME" "$STEAM_PASSWORD" \
