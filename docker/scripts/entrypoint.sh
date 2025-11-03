@@ -46,6 +46,13 @@ start_steamcmd_monitor() {
     log_info "启动 steamcmd 自动恢复监控..."
 
     (
+        # Track recovery attempts to prevent infinite loops
+        # 跟踪恢复尝试次数以防止无限循环
+        declare -A SUSPEND_TIME
+        declare -A RECOVERY_COUNT
+        MAX_RECOVERY_ATTEMPTS=3
+        CONFIRM_DELAY=15  # Wait 15 seconds to confirm process is truly stuck
+
         while true; do
             sleep 5
 
@@ -59,12 +66,46 @@ start_steamcmd_monitor() {
                     if [ -d "/proc/$PID" ]; then
                         STATE=$(cat /proc/$PID/status 2>/dev/null | grep "State:" | awk '{print $2}')
                         if [ "$STATE" = "T" ]; then
-                            log_warn "Detected suspended steamcmd process (PID: $PID), auto-recovering..."
-                            log_warn "检测到挂起的 steamcmd 进程 (PID: $PID)，正在自动恢复..."
-                            kill -CONT $PID 2>/dev/null && \
-                                log_info "Process $PID resumed successfully" || \
-                                log_warn "Failed to resume process $PID"
+                            CURRENT_TIME=$(date +%s)
+
+                            # Record first detection time
+                            if [ -z "${SUSPEND_TIME[$PID]}" ]; then
+                                SUSPEND_TIME[$PID]=$CURRENT_TIME
+                                RECOVERY_COUNT[$PID]=0
+                            fi
+
+                            # Calculate how long process has been suspended
+                            SUSPEND_DURATION=$((CURRENT_TIME - SUSPEND_TIME[$PID]))
+
+                            # Only recover if suspended for more than CONFIRM_DELAY seconds
+                            # This avoids false positives during docker attach
+                            if [ $SUSPEND_DURATION -ge $CONFIRM_DELAY ]; then
+                                # Check recovery attempt limit
+                                if [ ${RECOVERY_COUNT[$PID]} -lt $MAX_RECOVERY_ATTEMPTS ]; then
+                                    log_warn "Process $PID suspended for ${SUSPEND_DURATION}s, attempting recovery..."
+                                    log_warn "进程 $PID 已挂起 ${SUSPEND_DURATION} 秒，尝试恢复..."
+
+                                    if kill -CONT $PID 2>/dev/null; then
+                                        RECOVERY_COUNT[$PID]=$((RECOVERY_COUNT[$PID] + 1))
+                                        log_info "Process $PID resumed (attempt ${RECOVERY_COUNT[$PID]}/$MAX_RECOVERY_ATTEMPTS)"
+                                        # Reset suspend time after successful recovery
+                                        unset SUSPEND_TIME[$PID]
+                                    else
+                                        log_warn "Failed to resume process $PID"
+                                    fi
+                                else
+                                    log_error "Process $PID exceeded max recovery attempts, may require manual intervention"
+                                    log_error "进程 $PID 超过最大恢复次数，可能需要手动干预"
+                                fi
+                            fi
+                        else
+                            # Process is no longer suspended, reset tracking
+                            unset SUSPEND_TIME[$PID]
                         fi
+                    else
+                        # Process no longer exists, cleanup tracking
+                        unset SUSPEND_TIME[$PID]
+                        unset RECOVERY_COUNT[$PID]
                     fi
                 done
             fi
