@@ -283,8 +283,9 @@ print_next_steps() {
 
     echo -e "${BOLD}4. 玩家可以连接：${NC}"
     echo "   - 打开星露谷物语"
-    echo "   - 点击"合作" → "加入局域网游戏""
-    echo -e "   - 服务器应该会出现，或手动输入: ${CYAN}$(get_server_ip):24642${NC}"
+    echo "   - 点击"合作" → "输入邀请码""
+    echo "   - 输入服务器日志中显示的邀请码"
+    echo -e "   ${YELLOW}⚠️  注意：星露谷物语 1.6+ 使用邀请码系统，不支持直接 IP 连接${NC}"
     echo ""
 
     echo -e "${BOLD}常用命令：${NC}"

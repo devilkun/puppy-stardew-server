@@ -191,7 +191,9 @@ The script will:
 
 #### Prerequisites
 
-- Docker and Docker Compose installed ([Get Docker](https://docs.docker.com/get-docker/))
+- Docker and Docker Compose installed
+  - **Quick install** (Linux): `curl -fsSL https://get.docker.com | sh`
+  - **Or follow official guide**: [Get Docker](https://docs.docker.com/get-docker/)
 - A Steam account **with Stardew Valley purchased**
 - 2GB RAM minimum, 4GB recommended
 - 2GB free disk space
@@ -296,9 +298,9 @@ After the server starts, you need to create or load a save file **once**:
 
 4. **Players can now connect!**
    - Open Stardew Valley
-   - Click "Co-op" → "Join LAN Game"
-   - Your server should appear in the list
-   - Or manually enter: `your-server-ip:24642`
+   - Click "Co-op" → "Enter Invite Code"
+   - Enter the invite code shown in server logs
+   - ⚠️ **Note**: Stardew Valley 1.6+ uses invite codes, not direct IP connection
 
 ### What's Inside
 
@@ -846,7 +848,9 @@ curl -sSL https://raw.githubusercontent.com/truman-world/puppy-stardew-server/ma
 
 #### 前置要求
 
-- 已安装 Docker 和 Docker Compose（[安装 Docker](https://docs.docker.com/get-docker/)）
+- 已安装 Docker 和 Docker Compose
+  - **快速安装**（Linux）：`curl -fsSL https://get.docker.com | sh`
+  - **或参考官方指南**：[安装 Docker](https://docs.docker.com/get-docker/)
 - 一个 Steam 账户，**并且已购买星露谷物语**
 - 最低 2GB 内存，推荐 4GB
 - 2GB 可用磁盘空间
@@ -951,9 +955,9 @@ docker attach puppy-stardew
 
 4. **玩家现在可以连接了！**
    - 打开星露谷物语
-   - 点击"合作" → "加入局域网游戏"
-   - 您的服务器应该出现在列表中
-   - 或手动输入：`服务器IP:24642`
+   - 点击"合作" → "输入邀请码"
+   - 输入服务器日志中显示的邀请码
+   - ⚠️ **注意**：星露谷物语 1.6+ 使用邀请码系统，不支持直接 IP 连接
 
 ### 包含内容
 
