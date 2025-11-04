@@ -207,13 +207,35 @@ if [ "$ENABLE_VNC" = "true" ]; then
         VNC_PASSWORD="${VNC_PASSWORD:0:8}"
     fi
 
+    # Create VNC password file
     mkdir -p ~/.vnc
-    echo "$VNC_PASSWORD" | x11vnc -storepasswd /tmp/vncpass - >/dev/null 2>&1
+    echo "$VNC_PASSWORD" | x11vnc -storepasswd /tmp/vncpass - 2>&1 | grep -v "^$"
 
-    x11vnc -display :99 -forever -shared -rfbauth /tmp/vncpass -rfbport 5900 -noxdamage -bg >/dev/null 2>&1
+    if [ ! -f /tmp/vncpass ]; then
+        log_error "Failed to create VNC password file"
+    else
+        log_info "VNC password file created"
+    fi
 
-    log_info "✓ VNC server started on port 5900"
-    log_info "  Password: $VNC_PASSWORD"
+    # Wait for Xvfb to be fully ready
+    sleep 2
+
+    # Start x11vnc with error output visible
+    log_info "Starting x11vnc on port 5900..."
+    x11vnc -display :99 -forever -shared -rfbauth /tmp/vncpass -rfbport 5900 -noxdamage -bg 2>&1 | grep -v "^$"
+
+    # Wait for x11vnc to start
+    sleep 2
+
+    # Verify VNC is running
+    if pgrep -x "x11vnc" >/dev/null; then
+        log_info "✓ VNC server started successfully on port 5900"
+        log_info "  Password: $VNC_PASSWORD"
+        log_info "  Connect to: your-server-ip:5900"
+    else
+        log_error "✗ VNC server failed to start"
+        log_error "Check logs above for errors"
+    fi
 else
     log_step "Step 7: VNC disabled (set ENABLE_VNC=true to enable)"
 fi
