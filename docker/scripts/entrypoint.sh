@@ -190,11 +190,11 @@ fi
 log_step "Step 6: Starting virtual display..."
 
 rm -f /tmp/.X99-lock /tmp/.X11-unix/X99 2>/dev/null || true
-Xvfb :99 -screen 0 1920x1080x24 -ac +extension GLX +render -noreset &
+Xvfb :99 -screen 0 1280x720x24 -ac +extension GLX +render -noreset &
 export DISPLAY=:99
 sleep 3
 
-log_info "✓ Virtual display started on :99 (1920x1080)"
+log_info "✓ Virtual display started on :99 (1280x720)"
 
 # Step 7: Start VNC server (optional)
 if [ "$ENABLE_VNC" = "true" ]; then
