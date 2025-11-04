@@ -26,6 +26,8 @@ logs/
 # Backup files
 backups/
 backup-*/
+*.backup
+CLAUDE.md.backup
 
 # Private documentation and development materials
 docs/
@@ -57,3 +59,10 @@ AutoHideHost-v*.zip
 screenshots/
 !screenshots/game/
 !screenshots/game/instant-sleep-demo.gif
+
+# C# build artifacts
+bin/
+obj/
+*.csproj
+*.dll
+!docker/mods/**/*.dll
