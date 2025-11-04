@@ -151,17 +151,23 @@ if [ "$GAME_DOWNLOADED" = false ]; then
 
         # Run SteamCMD in interactive mode for Steam Guard
         log_info "Starting Steam authentication with Steam Guard..."
+        log_info "请输入验证码，验证成功后将自动开始下载游戏（约708MB）..."
+        log_info "After entering code, game download will start automatically (about 708MB)..."
 
         /home/steam/steamcmd/steamcmd.sh \
             +force_install_dir /home/steam/stardewvalley \
             +login "$STEAM_USERNAME" "$STEAM_PASSWORD" \
             +app_update 413150 validate \
-            +quit
+            +quit 2>&1 | tee /tmp/steam_guard_download.log
 
         # Check if download was successful
         if [ ! -f "/home/steam/stardewvalley/StardewValley" ]; then
             log_error "Game download failed after Steam Guard verification"
             log_error "Steam Guard 验证后游戏下载失败"
+
+            # Show last 20 lines of log for debugging
+            log_error "Last 20 lines of download log:"
+            tail -20 /tmp/steam_guard_download.log
             exit 1
         fi
 
@@ -201,17 +207,23 @@ if [ "$GAME_DOWNLOADED" = false ]; then
 
         # Run SteamCMD in interactive mode for Steam Guard
         log_info "Starting Steam authentication with Steam Guard..."
+        log_info "请输入验证码，验证成功后将自动开始下载游戏（约708MB）..."
+        log_info "After entering code, game download will start automatically (about 708MB)..."
 
         /home/steam/steamcmd/steamcmd.sh \
             +force_install_dir /home/steam/stardewvalley \
             +login "$STEAM_USERNAME" "$STEAM_PASSWORD" \
             +app_update 413150 validate \
-            +quit
+            +quit 2>&1 | tee /tmp/steam_guard_download.log
 
         # Check if download was successful
         if [ ! -f "/home/steam/stardewvalley/StardewValley" ]; then
             log_error "Game download failed after Steam Guard verification"
             log_error "Steam Guard 验证后游戏下载失败"
+
+            # Show last 20 lines of log for debugging
+            log_error "Last 20 lines of download log:"
+            tail -20 /tmp/steam_guard_download.log
             exit 1
         fi
 
@@ -265,17 +277,23 @@ if [ "$GAME_DOWNLOADED" = false ]; then
 
         # Run SteamCMD in interactive mode for Steam Guard
         log_info "Starting Steam authentication with Steam Guard..."
+        log_info "请输入验证码，验证成功后将自动开始下载游戏（约708MB）..."
+        log_info "After entering code, game download will start automatically (about 708MB)..."
 
         /home/steam/steamcmd/steamcmd.sh \
             +force_install_dir /home/steam/stardewvalley \
             +login "$STEAM_USERNAME" "$STEAM_PASSWORD" \
             +app_update 413150 validate \
-            +quit
+            +quit 2>&1 | tee /tmp/steam_guard_download.log
 
         # Check if download was successful
         if [ ! -f "/home/steam/stardewvalley/StardewValley" ]; then
             log_error "Game download failed after Steam Guard verification"
             log_error "Steam Guard 验证后游戏下载失败"
+
+            # Show last 20 lines of log for debugging
+            log_error "Last 20 lines of download log:"
+            tail -20 /tmp/steam_guard_download.log
             exit 1
         fi
 
