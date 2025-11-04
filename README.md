@@ -310,9 +310,10 @@ After the server starts, you need to create or load a save file **once**:
 
 4. **Players can now connect!**
    - Open Stardew Valley
-   - Click "Co-op" → "Enter Invite Code"
-   - Enter the invite code shown in server logs
-   - ⚠️ **Note**: Stardew Valley 1.6+ uses invite codes, not direct IP connection
+   - Click "Co-op" → "Join LAN Game"
+   - Your server should appear in the list automatically
+   - Or manually enter your server IP: `192.168.1.100` (example)
+   - ⚠️ **Note**: Port 24642 is used by default, no need to specify
 
 ### What's Inside
 
@@ -967,9 +968,10 @@ docker attach puppy-stardew
 
 4. **玩家现在可以连接了！**
    - 打开星露谷物语
-   - 点击"合作" → "输入邀请码"
-   - 输入服务器日志中显示的邀请码
-   - ⚠️ **注意**：星露谷物语 1.6+ 使用邀请码系统，不支持直接 IP 连接
+   - 点击"合作" → "加入局域网游戏"
+   - 服务器会自动出现在列表中
+   - 或手动输入服务器IP：`192.168.1.100`（示例）
+   - ⚠️ **注意**：默认使用 24642 端口，无需额外指定
 
 ### 包含内容
 

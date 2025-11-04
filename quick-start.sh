@@ -324,9 +324,9 @@ show_next_steps() {
 
     echo -e "${BOLD}4. Players can connect:${NC}"
     echo "   - Open Stardew Valley"
-    echo "   - Click \"Co-op\" → \"Enter Invite Code\""
-    echo "   - Enter the invite code shown in server logs"
-    echo -e "   ${YELLOW}⚠️  Note: Stardew Valley 1.6+ uses invite codes, not direct IP${NC}"
+    echo "   - Click \"Co-op\" → \"Join LAN Game\""
+    echo "   - Server will appear automatically, or enter server IP manually"
+    echo -e "   ${YELLOW}⚠️  Note: Only IP needed, port 24642 is used by default${NC}"
     echo ""
 
     echo -e "${BOLD}Useful commands:${NC}"
