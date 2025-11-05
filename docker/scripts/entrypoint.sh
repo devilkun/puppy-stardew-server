@@ -271,5 +271,9 @@ cd /home/steam/stardewvalley
 log_info "Starting auto-enable Always On Server script..."
 /home/steam/scripts/auto-enable-server.sh &
 
+# Start auto-handle ReadyCheckDialog script in background
+log_info "Starting auto-handle ReadyCheckDialog script..."
+/home/steam/scripts/auto-handle-readycheck.sh &
+
 # Run game server (this runs in foreground)
 exec ./StardewModdingAPI --server
