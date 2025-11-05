@@ -267,5 +267,9 @@ log_info ""
 
 cd /home/steam/stardewvalley
 
+# Start auto-enable script in background
+log_info "Starting auto-enable Always On Server script..."
+/home/steam/scripts/auto-enable-server.sh &
+
 # Run game server (this runs in foreground)
 exec ./StardewModdingAPI --server

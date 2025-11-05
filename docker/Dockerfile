@@ -14,7 +14,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 LABEL maintainer="truemanlive" \
       description="Stardew Valley dedicated server with auto-pause and instant sleep" \
-      version="1.0.41"
+      version="1.0.42"
 
 # Enable 32-bit architecture for SteamCMD
 # 启用32位架构支持以安装SteamCMD
@@ -37,6 +37,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     x11vnc \
     openbox \
     expect \
+    xdotool \
     && rm -rf /var/lib/apt/lists/*
 
 # Install .NET runtime (required for game mods)
