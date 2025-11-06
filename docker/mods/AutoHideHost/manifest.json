@@ -1,8 +1,8 @@
 {
   "Name": "AutoHideHost",
   "Author": "AI Developer",
-  "Version": "1.1.9",
-  "Description": "Automatically hides the host player in multiplayer servers and provides seamless day-night transitions without waiting prompts. v1.1.9: Fixed guard window to detect FarmHouse warp.",
+  "Version": "1.2.2",
+  "Description": "Automatically hides the host player in multiplayer servers and provides seamless day-night transitions without waiting prompts. v1.2.2: Disabled LevelUpMenu auto-handling to prevent unintended skill upgrades.",
   "UniqueID": "AIdev.AutoHideHost",
   "EntryDll": "AutoHideHost.dll",
   "MinimumApiVersion": "4.0.0",
