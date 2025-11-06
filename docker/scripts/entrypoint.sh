@@ -1,6 +1,6 @@
 #!/bin/bash
-# Puppy Stardew Server Entrypoint Script - v1.0.35 SIMPLIFIED
-# 小狗星谷服务器启动脚本 - v1.0.35 简化版
+# Puppy Stardew Server Entrypoint Script - v1.0.47
+# 小狗星谷服务器启动脚本 - v1.0.47
 
 # DO NOT use set -e - we need manual error handling
 # 不使用 set -e - 需要手动错误处理
@@ -93,8 +93,8 @@ download_game_via_steam() {
 # =============================================
 
 log_step "================================================"
-log_step "  Puppy Stardew Server v1.0.35 Starting..."
-log_step "  小狗星谷服务器 v1.0.35 启动中..."
+log_step "  Puppy Stardew Server v1.0.47 Starting..."
+log_step "  小狗星谷服务器 v1.0.47 启动中..."
 log_step "================================================"
 
 # Step 1: Validate Steam credentials
