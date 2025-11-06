@@ -8,7 +8,7 @@ using StardewValley.Locations;
 
 namespace AutoHideHost
 {
-    /// <summary>AutoHideHost 模组主入口 - v1.4.1: 自动启用Always On Server</summary>
+    /// <summary>AutoHideHost 模组主入口 - v1.2.2: 完全禁用LevelUpMenu自动处理</summary>
     public class ModEntry : Mod
     {
         private ModConfig Config;
@@ -29,6 +29,11 @@ namespace AutoHideHost
         private DateTime? lastRehideTime = null;  // 上次重新隐藏时间（防抖）
         private bool needRehide = false;  // 是否需要重新隐藏
         private int rehideTicks = 0;  // 重新隐藏倒计时
+
+        // v1.2.0: 防止事件跳过无限循环
+        private string lastSkippedEventId = null;  // 上次跳过的事件ID
+        private DateTime? lastSkipTime = null;  // 上次跳过时间
+        private int skipCooldownSeconds = 5;  // 跳过冷却时间（秒）
 
         public override void Entry(IModHelper helper)
         {
@@ -75,6 +80,10 @@ namespace AutoHideHost
             hasTriggeredSleep = false;
             isSleepInProgress = false;
             handledReadyCheck = false;  // v1.4.0: 重置ReadyCheck标志
+
+            // v1.2.0: 重置事件跳过标志
+            lastSkippedEventId = null;
+            lastSkipTime = null;
 
             // v1.1.9: 每天开始时启动守护窗口（防止玩家一直在线导致窗口过期）
             if (Config.PreventHostFarmWarp)
@@ -124,34 +133,15 @@ namespace AutoHideHost
                 return;
             }
 
-            // 2. LevelUpMenu（升级菜单）- 重要！会阻塞睡眠
+            // 2. LevelUpMenu（升级菜单）
+            // v1.2.2: CRITICAL - 完全不处理LevelUpMenu！
+            // 原因：任何自动点击都会触发技能升级选择，导致房主技能自动升到10级
+            // LevelUpMenu不会阻塞游戏流程，可以安全地让它保持显示
+            // 房主是隐藏的，玩家看不到这个菜单，游戏会正常继续
             if (e.NewMenu is StardewValley.Menus.LevelUpMenu levelUpMenu)
             {
-                this.Monitor.Log("检测到LevelUpMenu，自动选择并关闭", LogLevel.Info);
-                try
-                {
-                    // 尝试获取okButton
-                    var okButton = this.Helper.Reflection.GetField<StardewValley.Menus.ClickableTextureComponent>(
-                        levelUpMenu, "okButton", required: false)?.GetValue();
-
-                    if (okButton != null)
-                    {
-                        // 点击OK按钮的中心
-                        levelUpMenu.receiveLeftClick(okButton.bounds.Center.X, okButton.bounds.Center.Y, true);
-                        this.Monitor.Log("✓ LevelUpMenu已自动关闭", LogLevel.Info);
-                    }
-                    else
-                    {
-                        // 回退：点击屏幕中下方（OK按钮通常位置）
-                        levelUpMenu.receiveLeftClick(640, 500, true);
-                        this.Monitor.Log("✓ LevelUpMenu已通过坐标关闭", LogLevel.Info);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    this.Monitor.Log($"关闭LevelUpMenu失败: {ex.Message}", LogLevel.Error);
-                }
-                return;
+                this.Monitor.Log("检测到LevelUpMenu，保持显示（不自动处理以避免技能自动升级）", LogLevel.Info);
+                return;  // 不做任何处理，让菜单自然存在
             }
 
             // 3. DialogueBox（对话框）- 处理任务通知等阻塞性对话
@@ -353,10 +343,36 @@ namespace AutoHideHost
                 }
 
                 // 3. 自动跳过可跳过的事件
+                // v1.2.0: 添加事件ID去重和冷却时间，防止无限循环
                 if (Game1.CurrentEvent != null && Game1.CurrentEvent.skippable)
                 {
-                    this.Monitor.Log("跳过可跳过的事件", LogLevel.Info);
+                    string currentEventId = Game1.CurrentEvent.id;
+
+                    // 检查是否是同一个事件
+                    bool isSameEvent = (currentEventId == lastSkippedEventId);
+
+                    // 检查冷却时间
+                    bool inCooldown = false;
+                    if (lastSkipTime.HasValue)
+                    {
+                        var timeSinceLastSkip = (DateTime.Now - lastSkipTime.Value).TotalSeconds;
+                        inCooldown = timeSinceLastSkip < skipCooldownSeconds;
+
+                        if (inCooldown && isSameEvent)
+                        {
+                            // 同一个事件且在冷却期内，跳过（防止无限循环）
+                            LogDebug($"[事件跳过冷却] 事件 {currentEventId} 在 {timeSinceLastSkip:F1}秒内已处理，跳过");
+                            return;
+                        }
+                    }
+
+                    // 可以跳过这个事件
+                    this.Monitor.Log($"跳过可跳过的事件: {currentEventId}", LogLevel.Info);
                     Game1.CurrentEvent.skipEvent();
+
+                    // 记录已处理的事件
+                    lastSkippedEventId = currentEventId;
+                    lastSkipTime = DateTime.Now;
                 }
             }
 

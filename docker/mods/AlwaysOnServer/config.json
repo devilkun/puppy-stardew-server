@@ -1,5 +1,6 @@
 {
   "serverHotKey": "F9",
+  "autoLevel": false,
   "profitmargin": 100,
   "upgradeHouse": 0,
   "petname": "Perkele",
