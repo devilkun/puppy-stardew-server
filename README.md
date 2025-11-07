@@ -324,17 +324,18 @@ After the server starts, you need to create or load a save file **once**:
 
 #### Pre-installed Mods
 
-| Mod | Version | Purpose | New Features |
+| Mod | Version | Purpose | Key Features |
 |-----|---------|---------|--------------|
-| **AutoHideHost** | v1.1.9 | Custom mod - Hides host player and enables instant sleep | ✨ **Guard window** prevents Farm warp |
-| **Always On Server** | v1.20.3 | Keeps server running 24/7 without host player | - |
-| **ServerAutoLoad** | v1.2.1 | Custom mod - Automatically loads your save on startup | - |
+| **Always On Server** | v1.20.3 | Keeps server running 24/7 without host player | Headless server operation |
+| **AutoHideHost** | v1.2.2 | Custom mod - Hides host player and enables instant sleep | Seamless day-night transitions |
+| **ServerAutoLoad** | v1.2.1 | Custom mod - Automatically loads your save on startup | No manual VNC loading needed |
+| **✨ Skill Level Guard** | v1.1.0 | **NEW** - Prevents forced Level 10 bug from Always On Server | XP-based level calculation, preserves natural progression |
 
-**AutoHideHost v1.1.9 Highlights:**
-- **Fixed**: Host no longer teleports to Farm entrance at 6:40 AM
-- 🛡️ **New**: Guard window mechanism with daily refresh
-- ⚡ **Instant**: Re-hide delay < 1 game tick
-- **Persistent**: Works across multiple consecutive days
+**What's New in v1.0.49:**
+- 🎉 **Fixed**: Always On Server no longer forces host to Level 10
+- ✅ **Added**: Skill Level Guard mod with Harmony patches
+- ✅ **Verified**: Normal skill progression (Level 1 → 2 → ... → 10) works correctly
+- ✅ **Tested**: Host skills now accurately reflect earned experience points
 
 All mods are pre-configured and ready to use!
 
@@ -989,17 +990,18 @@ docker attach puppy-stardew
 
 #### 预装模组
 
-| 模组 | 版本 | 用途 | 新功能 |
+| 模组 | 版本 | 用途 | 主要功能 |
 |-----|------|------|--------|
-| **AutoHideHost** | v1.1.9 | 自定义模组 - 隐藏房主玩家并启用即时睡眠 | ✨ **守护窗口**防止Farm传送 |
-| **Always On Server** | v1.20.3 | 保持服务器 24/7 运行，不需要房主在线 | - |
-| **ServerAutoLoad** | v1.2.1 | 自定义模组 - 启动时自动加载存档 | - |
+| **Always On Server** | v1.20.3 | 保持服务器 24/7 运行，不需要房主在线 | 无人值守服务器运行 |
+| **AutoHideHost** | v1.2.2 | 自定义模组 - 隐藏房主玩家并启用即时睡眠 | 无缝昼夜过渡 |
+| **ServerAutoLoad** | v1.2.1 | 自定义模组 - 启动时自动加载存档 | 无需手动VNC加载 |
+| **✨ Skill Level Guard** | v1.1.0 | **新增** - 防止Always On Server强制升到10级的bug | 基于经验值精确计算等级，保留自然升级 |
 
-**AutoHideHost v1.1.9 亮点：**
-- **已修复**：房主不再在早上6:40传送到Farm门口
-- 🛡️ **新增**：守护窗口机制，每天自动刷新
-- ⚡ **即时**：重新隐藏延迟 < 1游戏帧
-- **持久**：跨多个连续日期工作
+**v1.0.49 新功能：**
+- 🎉 **已修复**：Always On Server不再强制房主升到10级
+- ✅ **新增**：Skill Level Guard模组，使用Harmony补丁
+- ✅ **已验证**：正常技能升级（1级 → 2级 → ... → 10级）正常工作
+- ✅ **已测试**：房主技能等级现在准确反映获得的经验值
 
 所有模组都已预配置，开箱即用！
 

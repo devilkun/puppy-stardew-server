@@ -66,3 +66,4 @@ obj/
 *.csproj
 *.dll
 !docker/mods/**/*.dll
+docker/mods/SkillLevelGuard-Source/
