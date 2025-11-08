@@ -31,56 +31,63 @@ while [ $elapsed -lt $MAX_WAIT ]; do
             log "等待模组初始化..."
             sleep 5
 
-            # 使用 xdotool 模拟按 F9 键（重试最多3次）
-            MAX_RETRIES=3
-            RETRY=0
-            SUCCESS=false
+            # ===== 关键修复：先检测状态，再决定是否按键 =====
+            # 检查 Always On Server 是否已经启用
+            log "检查 Always On Server 当前状态..."
 
-            while [ $RETRY -lt $MAX_RETRIES ]; do
-                log "模拟按 F9 键启用 Always On Server (尝试 $((RETRY + 1))/$MAX_RETRIES)..."
+            # 统计 "Auto Mode On" 和 "Auto mode off" 的出现次数
+            ON_COUNT=$(grep -c "Auto [Mm]ode [Oo]n" "$SMAPI_LOG" 2>/dev/null || echo "0")
+            OFF_COUNT=$(grep -c "Auto mode off" "$SMAPI_LOG" 2>/dev/null || echo "0")
 
-                # 设置 DISPLAY 环境变量
-                export DISPLAY=:99
+            log "  检测到 'Auto Mode On' 次数: $ON_COUNT"
+            log "  检测到 'Auto mode off' 次数: $OFF_COUNT"
 
-                # 使用 xdotool 模拟按键
-                if command -v xdotool >/dev/null 2>&1; then
-                    # 连续按 3 次 F9 确保生效
-                    xdotool key F9
-                    sleep 0.5
-                    xdotool key F9
-                    sleep 0.5
-                    xdotool key F9
-
-                    log "✓ F9 按键已发送"
-                    sleep 5
-
-                    # 验证是否成功 - 检查多种可能的成功标志
-                    if grep -qi "Auto [Mm]ode [Oo]n\|Server Mode: On\|serverMode.*true" "$SMAPI_LOG" 2>/dev/null; then
-                        log "✅ Always On Server 已成功启用！"
-                        log "✅ 自动暂停功能已激活（无玩家时暂停，有玩家时继续）"
-                        SUCCESS=true
-                        break
-                    else
-                        log "⚠ 未检测到成功消息，等待后重试..."
-                        sleep 3
-                    fi
-                else
-                    log "❌ xdotool 未安装"
-                    break
-                fi
-
-                RETRY=$((RETRY + 1))
-            done
-
-            if [ "$SUCCESS" = true ]; then
+            # 如果 ON 次数大于 OFF 次数，说明当前是启用状态
+            if [ "$ON_COUNT" -gt "$OFF_COUNT" ]; then
+                log "✅ Always On Server 已经处于启用状态（ON=$ON_COUNT, OFF=$OFF_COUNT）"
+                log "✅ 自动暂停功能已激活（无玩家时暂停，有玩家时继续）"
+                log "   无需按 F9 键"
                 exit 0
+            elif [ "$ON_COUNT" -eq "$OFF_COUNT" ] && [ "$ON_COUNT" -gt 0 ]; then
+                log "⚠️ Always On Server 可能被关闭（ON=$ON_COUNT, OFF=$OFF_COUNT）"
+                log "   尝试按 F9 重新启用..."
             else
-                log "⚠ 自动启用可能失败"
-                log "   验证方法："
-                log "   1. 检查游戏是否暂停（无玩家时应该暂停）"
-                log "   2. 玩家连接后游戏应该自动继续"
-                log "   3. 如果游戏一直运行，说明 Server Mode 未启用"
-                exit 0  # 不返回错误，因为可能已经启用但日志中没有明确标识
+                log "ℹ️ Always On Server 状态未知（ON=$ON_COUNT, OFF=$OFF_COUNT）"
+                log "   尝试按 F9 启用..."
+            fi
+
+            # 设置 DISPLAY 环境变量
+            export DISPLAY=:99
+
+            # 使用 xdotool 模拟按键（修复：只按 1 次）
+            if command -v xdotool >/dev/null 2>&1; then
+                log "模拟按 F9 键启用 Always On Server..."
+
+                # 只按 1 次 F9（不再连续按 3 次）
+                xdotool key F9
+                log "✓ F9 按键已发送"
+
+                # 等待 3 秒让游戏响应
+                sleep 3
+
+                # 重新检查状态
+                ON_COUNT_AFTER=$(grep -c "Auto [Mm]ode [Oo]n" "$SMAPI_LOG" 2>/dev/null || echo "0")
+                OFF_COUNT_AFTER=$(grep -c "Auto mode off" "$SMAPI_LOG" 2>/dev/null || echo "0")
+
+                log "  按键后状态检查: ON=$ON_COUNT_AFTER, OFF=$OFF_COUNT_AFTER"
+
+                if [ "$ON_COUNT_AFTER" -gt "$OFF_COUNT_AFTER" ]; then
+                    log "✅ Always On Server 已成功启用！"
+                    log "✅ 自动暂停功能已激活（无玩家时暂停，有玩家时继续）"
+                    exit 0
+                else
+                    log "⚠️ 状态验证失败，但可能已经启用"
+                    log "   建议通过 VNC 检查游戏是否在无玩家时暂停"
+                    exit 0  # 不返回错误，可能已经通过其他方式启用
+                fi
+            else
+                log "❌ xdotool 未安装"
+                exit 1
             fi
         fi
     fi
