@@ -1,6 +1,6 @@
 #!/bin/bash
-# Puppy Stardew Server Entrypoint Script - v1.0.51
-# 小狗星谷服务器启动脚本 - v1.0.51
+# Puppy Stardew Server Entrypoint Script - v1.0.52
+# 小狗星谷服务器启动脚本 - v1.0.52
 
 # DO NOT use set -e - we need manual error handling
 # 不使用 set -e - 需要手动错误处理
@@ -93,8 +93,8 @@ download_game_via_steam() {
 # =============================================
 
 log_step "================================================"
-log_step "  Puppy Stardew Server v1.0.51 Starting..."
-log_step "  小狗星谷服务器 v1.0.51 启动中..."
+log_step "  Puppy Stardew Server v1.0.52 Starting..."
+log_step "  小狗星谷服务器 v1.0.52 启动中..."
 log_step "================================================"
 
 # Step 1: Validate Steam credentials
@@ -222,6 +222,14 @@ if [ "$ENABLE_VNC" = "true" ]; then
         log_info "✓ VNC server started successfully on port 5900"
         log_info "  Password: $VNC_PASSWORD"
         log_info "  Connect to: your-server-ip:5900"
+
+        # Start VNC monitor to keep it alive
+        # 启动 VNC 监控，保持服务存活
+        if [ -f "/home/steam/scripts/vnc-monitor.sh" ]; then
+            log_info "Starting VNC health monitor..."
+            /home/steam/scripts/vnc-monitor.sh &
+            log_info "✓ VNC monitor started (30s check interval)"
+        fi
     else
         log_error "✗ VNC server failed to start"
         log_error "Check logs above for errors"
