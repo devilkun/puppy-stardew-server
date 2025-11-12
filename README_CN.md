@@ -166,15 +166,28 @@ graph TB
 
 ### 方式 1：一键部署（推荐小白使用）
 
-**中文版:**
+**中文版（官方）:**
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/truman-world/puppy-stardew-server/main/quick-start-zh.sh | bash
 ```
 
-**⚠️ 国内网络访问提示:**
+**中文版（国内加速）:**
 
-如果上面的命令访问失败（`raw.githubusercontent.com` 被屏蔽），请使用**方式 2：手动部署**（见下方），步骤同样简单，且**完全不需要访问 GitHub**。
+如果上面的命令访问失败，可以使用以下加速服务：
+
+```bash
+# 加速方案 1: jsDelivr CDN（推荐）
+curl -sSL https://cdn.jsdelivr.net/gh/truman-world/puppy-stardew-server@main/quick-start-zh.sh | bash
+
+# 加速方案 2: Statically CDN
+curl -sSL https://cdn.statically.io/gh/truman-world/puppy-stardew-server/main/quick-start-zh.sh | bash
+
+# 加速方案 3: GitHack
+curl -sSL https://raw.githack.com/truman-world/puppy-stardew-server/main/quick-start-zh.sh | bash
+```
+
+**⚠️ 如果所有加速方案都无法访问**，请使用**方式 2：手动部署**（见下方），步骤同样简单，且**完全不需要访问 GitHub**。
 
 脚本会自动：
 - 检查 Docker 安装
