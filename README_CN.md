@@ -25,13 +25,15 @@
 
 </div>
 
-> **💡 推荐云服务器配置**
->
-> 运行本服务器推荐配置：2核2G内存，3M带宽以上
->
-> - [阿里云 2核2G 200M峰值带宽 38元/年](https://www.aliyun.com/minisite/goods?userCode=9l3an8ag)
-> - [腾讯云 2核2G3M 68元/年](https://cloud.tencent.com/act/cps/redirect?redirect=6544&cps_key=88654ec92806114819c3fe1c909cd452&from=console)
-> - [京东云 2核2G 58元/年](https://3.cn/2iwmQ-AC)
+---
+
+## 💡 推荐云服务器配置
+
+运行本服务器推荐配置：**2核2G内存，3M带宽以上**
+
+- **[阿里云 2核2G 200M峰值带宽 38元/年](https://www.aliyun.com/minisite/goods?userCode=9l3an8ag)**
+- **[腾讯云 2核2G3M 68元/年](https://cloud.tencent.com/act/cps/redirect?redirect=6544&cps_key=88654ec92806114819c3fe1c909cd452&from=console)**
+- **[京东云 2核2G 58元/年](https://3.cn/2iwmQ-AC)**
 
 ---
 
