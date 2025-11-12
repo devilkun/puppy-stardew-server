@@ -1,6 +1,6 @@
 #!/bin/bash
-# Puppy Stardew Server Entrypoint Script - v1.0.60
-# 小狗星谷服务器启动脚本 - v1.0.60
+# Puppy Stardew Server Entrypoint Script - v1.0.61
+# 小狗星谷服务器启动脚本 - v1.0.61
 
 # DO NOT use set -e - we need manual error handling
 # 不使用 set -e - 需要手动错误处理
@@ -88,14 +88,78 @@ download_game_via_steam() {
 }
 
 # =============================================
-# Main Script Starts Here
-# 主脚本从这里开始
+# Phase 1: Root Initialization (Permission Fixes)
+# 阶段1：Root 初始化（权限修复）
+# =============================================
+
+if [ "$(id -u)" = "0" ]; then
+    log_step "================================================"
+    log_step "  Phase 1: Root Initialization"
+    log_step "  阶段1：Root 初始化"
+    log_step "================================================"
+
+    # Fix libcurl compatibility for SteamCMD
+    log_info "Setting up libcurl compatibility..."
+    if [ ! -f "/usr/lib/x86_64-linux-gnu/libcurl.so.4" ]; then
+        rm -f /usr/lib/x86_64-linux-gnu/libcurl.so.4 2>/dev/null || true
+        ln -sf /usr/lib/i386-linux-gnu/libcurl.so.4 /usr/lib/x86_64-linux-gnu/libcurl.so.4
+        log_info "✅ libcurl symlink created"
+    else
+        log_info "✅ libcurl already configured"
+    fi
+
+    # Fix data directory permissions
+    log_info "Checking and fixing file permissions..."
+    DIRS_TO_CHECK=(
+        "/home/steam/.config/StardewValley"
+        "/home/steam/stardewvalley"
+        "/home/steam/Steam"
+        "/home/steam/.local/share/puppy-stardew/logs"
+    )
+
+    FIXED_COUNT=0
+    for dir in "${DIRS_TO_CHECK[@]}"; do
+        if [ -d "$dir" ]; then
+            # Check if any files are not owned by steam user (UID 1000)
+            WRONG_OWNER=$(find "$dir" ! -user steam 2>/dev/null | wc -l)
+            if [ "$WRONG_OWNER" -gt 0 ]; then
+                log_warn "Found $WRONG_OWNER file(s) with incorrect ownership in $dir"
+                log_info "Fixing permissions..."
+                chown -R steam:steam "$dir" 2>/dev/null || true
+                FIXED_COUNT=$((FIXED_COUNT + WRONG_OWNER))
+            fi
+        fi
+    done
+
+    if [ "$FIXED_COUNT" -gt 0 ]; then
+        log_info "✅ Fixed permissions for $FIXED_COUNT file(s)"
+    else
+        log_info "✅ All permissions correct"
+    fi
+
+    log_info "Switching to steam user..."
+    log_info "================================================"
+
+    # Re-execute this script as steam user
+    exec runuser -u steam -- "$0" "$@"
+fi
+
+# =============================================
+# Phase 2: Steam User Operations
+# 阶段2：Steam 用户操作
 # =============================================
 
 log_step "================================================"
-log_step "  Puppy Stardew Server v1.0.58 Starting..."
-log_step "  小狗星谷服务器 v1.0.58 启动中..."
+log_step "  Puppy Stardew Server v1.0.61 Starting..."
+log_step "  小狗星谷服务器 v1.0.61 启动中..."
 log_step "================================================"
+
+# Verify we're running as steam user
+if [ "$(id -u)" != "1000" ]; then
+    log_error "ERROR: Script must run as steam user (UID 1000)"
+    log_error "错误：脚本必须以 steam 用户（UID 1000）运行"
+    exit 1
+fi
 
 # Step 1: Validate Steam credentials
 log_step "Step 1: Validating configuration..."
@@ -110,19 +174,9 @@ fi
 
 log_info "Steam username: $STEAM_USERNAME"
 
-# Step 2: Fix libcurl compatibility
-log_step "Step 2: Setting up system compatibility..."
-
-if [ ! -f "/usr/lib/x86_64-linux-gnu/libcurl.so.4" ]; then
-    log_info "Creating libcurl symlink for SteamCMD..."
-    rm -f /usr/lib/x86_64-linux-gnu/libcurl.so.4 2>/dev/null || true
-    ln -sf /usr/lib/i386-linux-gnu/libcurl.so.4 /usr/lib/x86_64-linux-gnu/libcurl.so.4
-    log_info "libcurl compatibility fixed!"
-fi
-
-# Step 3: Download game if needed
+# Step 2: Download game if needed
 if [ ! -f "/home/steam/stardewvalley/StardewValley" ]; then
-    log_step "Step 3: Downloading Stardew Valley..."
+    log_step "Step 2: Downloading Stardew Valley..."
     log_warn "Game files not found. Downloading from Steam..."
     log_warn "未找到游戏文件。正在从 Steam 下载..."
     log_warn "This will take 5-10 minutes depending on your connection."
@@ -142,13 +196,13 @@ if [ ! -f "/home/steam/stardewvalley/StardewValley" ]; then
         exit 1
     fi
 else
-    log_step "Step 3: Game files found, skipping download"
+    log_step "Step 2: Game files found, skipping download"
     log_info "✓ Stardew Valley already downloaded"
     log_info "✓ 星露谷物语已下载"
 fi
 
-# Step 4: Install SMAPI
-log_step "Step 4: Installing SMAPI mod loader..."
+# Step 3: Install SMAPI
+log_step "Step 3: Installing SMAPI mod loader..."
 
 if [ ! -f "/home/steam/stardewvalley/StardewModdingAPI" ]; then
     log_info "Installing SMAPI..."
@@ -166,7 +220,7 @@ else
     log_info "✓ SMAPI already installed"
 fi
 
-# Step 5: Install mods
+# Step 4: Install mods
 log_step "Step 5: Installing mods..."
 
 mkdir -p /home/steam/stardewvalley/Mods
@@ -186,7 +240,7 @@ if [ -d "/home/steam/preinstalled-mods" ]; then
     done
 fi
 
-# Step 6: Setup virtual display
+# Step 5: Setup virtual display
 log_step "Step 6: Starting virtual display..."
 
 rm -f /tmp/.X99-lock /tmp/.X11-unix/X99 2>/dev/null || true
@@ -196,7 +250,7 @@ sleep 3
 
 log_info "✓ Virtual display started on :99 (1280x720)"
 
-# Step 7: Start VNC server (optional)
+# Step 6: Start VNC server (optional)
 if [ "$ENABLE_VNC" = "true" ]; then
     log_step "Step 7: Starting VNC server..."
 
@@ -238,7 +292,7 @@ else
     log_step "Step 7: VNC disabled (set ENABLE_VNC=true to enable)"
 fi
 
-# Step 7.5: Setup optimized game config for VNC display
+# Step 7: Setup optimized game config for VNC display
 # 步骤 7.5：为VNC显示设置优化的游戏配置
 log_step "Step 7.5: Configuring game display settings..."
 
