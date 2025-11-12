@@ -166,10 +166,35 @@ graph TB
 
 ### 方式 1：一键部署（推荐小白使用）
 
-**中文版:**
+**中文版（国际网络）:**
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/truman-world/puppy-stardew-server/main/quick-start-zh.sh | bash
+```
+
+**中文版（国内加速）:**
+
+如果上面的命令访问失败，可以使用以下国内加速服务：
+
+```bash
+# 方案1: 使用 ghproxy 加速（推荐）
+curl -sSL https://ghproxy.com/https://raw.githubusercontent.com/truman-world/puppy-stardew-server/main/quick-start-zh.sh | bash
+
+# 方案2: 使用 jsdelivr CDN
+curl -sSL https://cdn.jsdelivr.net/gh/truman-world/puppy-stardew-server@main/quick-start-zh.sh | bash
+
+# 方案3: 使用 fastgit 加速
+curl -sSL https://raw.fastgit.org/truman-world/puppy-stardew-server/main/quick-start-zh.sh | bash
+```
+
+💡 **提示**: 如果所有方案都无法访问，可以手动下载脚本后执行：
+```bash
+# 下载脚本
+wget https://ghproxy.com/https://raw.githubusercontent.com/truman-world/puppy-stardew-server/main/quick-start-zh.sh -O quick-start-zh.sh
+# 添加执行权限
+chmod +x quick-start-zh.sh
+# 运行脚本
+./quick-start-zh.sh
 ```
 
 脚本会自动：
