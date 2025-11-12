@@ -341,6 +341,71 @@ tar -czf backup-$(date +%Y%m%d).tar.gz data/saves/
 ```
 </details>
 
+<details>
+<summary><b>Replace or Upload New Save</b></summary>
+
+You can replace the current save or upload a new one at any time.
+
+### Method 1: Upload Save from Your PC
+
+1. **Locate your save on your PC**:
+   - **Windows**: `%AppData%\StardewValley\Saves\YourFarm_123456789\`
+   - **Mac**: `~/.config/StardewValley/Saves/YourFarm_123456789/`
+   - **Linux**: `~/.config/StardewValley/Saves/YourFarm_123456789/`
+
+2. **Upload to server**:
+   ```bash
+   # Copy the entire save folder to the server
+   scp -r YourFarm_123456789/ root@your-server:/root/puppy-stardew-server/data/saves/Saves/
+   ```
+
+3. **Restart container** (it will auto-fix permissions):
+   ```bash
+   docker compose restart
+   ```
+
+4. **Verify**:
+   ```bash
+   docker logs -f puppy-stardew
+   # Look for: "✓ SAVE LOADED SUCCESSFULLY"
+   ```
+
+### Method 2: Replace Existing Save
+
+1. **Backup current save** (optional but recommended):
+   ```bash
+   tar -czf old-save-$(date +%Y%m%d).tar.gz data/saves/
+   ```
+
+2. **Remove old save**:
+   ```bash
+   rm -rf data/saves/Saves/OldFarm_*
+   ```
+
+3. **Upload new save** (same as Method 1, step 2-4)
+
+### Important Notes
+
+- **Permissions are auto-fixed**: The container automatically fixes file permissions on startup (v1.0.59+)
+- **No manual chown needed**: Just restart the container after uploading
+- **Save format**: Must be a co-op save (created via CO-OP menu, not "New" menu)
+- **ServerAutoLoad**: Will automatically detect and load the new save
+
+### Troubleshooting
+
+If save doesn't load:
+```bash
+# Check if save files exist
+docker exec puppy-stardew ls -la /home/steam/.config/StardewValley/Saves/
+
+# Check permissions (should be steam:steam or 1000:1000)
+docker exec puppy-stardew ls -l /home/steam/.config/StardewValley/Saves/YourFarm_*/
+
+# Force restart to trigger permission fix
+docker compose restart
+```
+</details>
+
 ## Troubleshooting
 
 <details>
@@ -348,13 +413,19 @@ tar -czf backup-$(date +%Y%m%d).tar.gz data/saves/
 
 **Cause**: Data directories have wrong permissions.
 
-**Fix**:
+**Fix** (v1.0.59+):
+```bash
+# Simply restart the container - it will auto-fix permissions
+docker compose restart
+```
+
+**Manual fix** (if auto-fix doesn't work):
 ```bash
 chown -R 1000:1000 data/
 docker compose restart
 ```
 
-The container runs as user ID 1000, so files must be owned by UID 1000.
+**Note**: Since v1.0.59, the container automatically fixes file permissions on startup. You only need to restart the container after uploading files.
 </details>
 
 <details>

@@ -341,6 +341,71 @@ tar -czf backup-$(date +%Y%m%d).tar.gz data/saves/
 ```
 </details>
 
+<details>
+<summary><b>更换或上传新存档</b></summary>
+
+您可以随时更换当前存档或上传新存档。
+
+### 方法 1：从本机上传存档
+
+1. **在本机找到存档位置**：
+   - **Windows**: `%AppData%\StardewValley\Saves\你的农场_123456789\`
+   - **Mac**: `~/.config/StardewValley/Saves/你的农场_123456789/`
+   - **Linux**: `~/.config/StardewValley/Saves/你的农场_123456789/`
+
+2. **上传到服务器**：
+   ```bash
+   # 将整个存档文件夹复制到服务器
+   scp -r 你的农场_123456789/ root@服务器IP:/root/puppy-stardew-server/data/saves/Saves/
+   ```
+
+3. **重启容器**（会自动修复权限）：
+   ```bash
+   docker compose restart
+   ```
+
+4. **验证加载**：
+   ```bash
+   docker logs -f puppy-stardew
+   # 查找："✓ SAVE LOADED SUCCESSFULLY"
+   ```
+
+### 方法 2：替换现有存档
+
+1. **备份当前存档**（可选但推荐）：
+   ```bash
+   tar -czf old-save-$(date +%Y%m%d).tar.gz data/saves/
+   ```
+
+2. **删除旧存档**：
+   ```bash
+   rm -rf data/saves/Saves/旧农场_*
+   ```
+
+3. **上传新存档**（同方法 1 的步骤 2-4）
+
+### 重要提示
+
+- **权限自动修复**：容器启动时会自动修复文件权限（v1.0.59+）
+- **无需手动 chown**：上传文件后只需重启容器即可
+- **存档格式**：必须是多人存档（通过 CO-OP 菜单创建，而非"新游戏"）
+- **ServerAutoLoad**：会自动检测并加载新存档
+
+### 故障排除
+
+如果存档没有加载：
+```bash
+# 检查存档文件是否存在
+docker exec puppy-stardew ls -la /home/steam/.config/StardewValley/Saves/
+
+# 检查权限（应该是 steam:steam 或 1000:1000）
+docker exec puppy-stardew ls -l /home/steam/.config/StardewValley/Saves/你的农场_*/
+
+# 强制重启以触发权限修复
+docker compose restart
+```
+</details>
+
 ## 故障排除
 
 <details>
@@ -348,13 +413,19 @@ tar -czf backup-$(date +%Y%m%d).tar.gz data/saves/
 
 **原因**：数据目录权限不正确。
 
-**解决方法**：
+**解决方法**（v1.0.59+）：
+```bash
+# 只需重启容器 - 会自动修复权限
+docker compose restart
+```
+
+**手动修复**（如果自动修复不起作用）：
 ```bash
 chown -R 1000:1000 data/
 docker compose restart
 ```
 
-容器以用户 ID 1000 运行，所以文件必须归 UID 1000 所有。
+**注意**：从 v1.0.59 开始，容器启动时会自动修复文件权限。上传文件后只需重启容器即可。
 </details>
 
 <details>
