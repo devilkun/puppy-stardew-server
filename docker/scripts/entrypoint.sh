@@ -1,6 +1,6 @@
 #!/bin/bash
-# Puppy Stardew Server Entrypoint Script - v1.0.59
-# 小狗星谷服务器启动脚本 - v1.0.59
+# Puppy Stardew Server Entrypoint Script - v1.0.60
+# 小狗星谷服务器启动脚本 - v1.0.60
 
 # DO NOT use set -e - we need manual error handling
 # 不使用 set -e - 需要手动错误处理
@@ -93,8 +93,8 @@ download_game_via_steam() {
 # =============================================
 
 log_step "================================================"
-log_step "  Puppy Stardew Server v1.0.59 Starting..."
-log_step "  小狗星谷服务器 v1.0.59 启动中..."
+log_step "  Puppy Stardew Server v1.0.58 Starting..."
+log_step "  小狗星谷服务器 v1.0.58 启动中..."
 log_step "================================================"
 
 # Step 1: Validate Steam credentials
@@ -110,42 +110,8 @@ fi
 
 log_info "Steam username: $STEAM_USERNAME"
 
-# Step 2: Fix data directory permissions
-log_step "Step 2: Fixing data directory permissions..."
-log_info "Checking file ownership in data directories..."
-
-# Check and fix permissions for all mounted volumes
-# This ensures files uploaded by users can be read/written by the container
-DIRS_TO_CHECK=(
-    "/home/steam/.config/StardewValley"
-    "/home/steam/stardewvalley"
-    "/home/steam/Steam"
-)
-
-for dir in "${DIRS_TO_CHECK[@]}"; do
-    if [ -d "$dir" ]; then
-        # Check if any files are not owned by steam user (UID 1000)
-        WRONG_OWNER=$(find "$dir" ! -user steam 2>/dev/null | wc -l)
-        if [ "$WRONG_OWNER" -gt 0 ]; then
-            log_warn "Found $WRONG_OWNER file(s) with incorrect ownership in $dir"
-            log_warn "在 $dir 中发现 $WRONG_OWNER 个文件权限不正确"
-            log_info "Fixing permissions... (this may take a moment)"
-            log_info "正在修复权限...（可能需要一点时间）"
-
-            # Fix ownership recursively
-            chown -R steam:steam "$dir" 2>/dev/null || true
-
-            log_info "✅ Permissions fixed for $dir"
-            log_info "✅ $dir 的权限已修复"
-        fi
-    fi
-done
-
-log_info "✅ Permission check completed"
-log_info "✅ 权限检查完成"
-
-# Step 3: Fix libcurl compatibility
-log_step "Step 3: Setting up system compatibility..."
+# Step 2: Fix libcurl compatibility
+log_step "Step 2: Setting up system compatibility..."
 
 if [ ! -f "/usr/lib/x86_64-linux-gnu/libcurl.so.4" ]; then
     log_info "Creating libcurl symlink for SteamCMD..."
@@ -154,9 +120,9 @@ if [ ! -f "/usr/lib/x86_64-linux-gnu/libcurl.so.4" ]; then
     log_info "libcurl compatibility fixed!"
 fi
 
-# Step 4: Download game if needed
+# Step 3: Download game if needed
 if [ ! -f "/home/steam/stardewvalley/StardewValley" ]; then
-    log_step "Step 4: Downloading Stardew Valley..."
+    log_step "Step 3: Downloading Stardew Valley..."
     log_warn "Game files not found. Downloading from Steam..."
     log_warn "未找到游戏文件。正在从 Steam 下载..."
     log_warn "This will take 5-10 minutes depending on your connection."
@@ -181,8 +147,8 @@ else
     log_info "✓ 星露谷物语已下载"
 fi
 
-# Step 5: Install SMAPI
-log_step "Step 5: Installing SMAPI mod loader..."
+# Step 4: Install SMAPI
+log_step "Step 4: Installing SMAPI mod loader..."
 
 if [ ! -f "/home/steam/stardewvalley/StardewModdingAPI" ]; then
     log_info "Installing SMAPI..."
@@ -200,8 +166,8 @@ else
     log_info "✓ SMAPI already installed"
 fi
 
-# Step 6: Install mods
-log_step "Step 6: Installing mods..."
+# Step 5: Install mods
+log_step "Step 5: Installing mods..."
 
 mkdir -p /home/steam/stardewvalley/Mods
 
@@ -220,8 +186,8 @@ if [ -d "/home/steam/preinstalled-mods" ]; then
     done
 fi
 
-# Step 7: Setup virtual display
-log_step "Step 7: Starting virtual display..."
+# Step 6: Setup virtual display
+log_step "Step 6: Starting virtual display..."
 
 rm -f /tmp/.X99-lock /tmp/.X11-unix/X99 2>/dev/null || true
 Xvfb :99 -screen 0 1280x720x24 -ac +extension GLX +render -noreset &
@@ -272,9 +238,9 @@ else
     log_step "Step 7: VNC disabled (set ENABLE_VNC=true to enable)"
 fi
 
-# Step 8: Setup optimized game config for VNC display
-# 步骤 8：为VNC显示设置优化的游戏配置
-log_step "Step 8: Configuring game display settings..."
+# Step 7.5: Setup optimized game config for VNC display
+# 步骤 7.5：为VNC显示设置优化的游戏配置
+log_step "Step 7.5: Configuring game display settings..."
 
 CONFIG_DIR="/home/steam/.config/StardewValley"
 CONFIG_FILE="$CONFIG_DIR/startup_preferences"
@@ -334,23 +300,15 @@ log_info "  3. 无需输入端口号（默认：24642/UDP）"
 log_info "================================================"
 log_info ""
 
-# Switch to steam user and start the game server
-# 切换到 steam 用户并启动游戏服务器
-log_info "Switching to steam user to start game server..."
-log_info "切换到 steam 用户启动游戏服务器..."
-
 cd /home/steam/stardewvalley
 
-# Use su to switch to steam user and run the game
-# The -s flag specifies shell, -c runs the command
-exec su -s /bin/bash steam <<'EOFSTEAM'
 # Start auto-enable script in background
+log_info "Starting auto-enable Always On Server script..."
 /home/steam/scripts/auto-enable-server.sh &
 
 # Start auto-handle ReadyCheckDialog script in background
+log_info "Starting auto-handle ReadyCheckDialog script..."
 /home/steam/scripts/auto-handle-readycheck.sh &
 
 # Run game server (this runs in foreground)
-cd /home/steam/stardewvalley
 exec ./StardewModdingAPI --server
-EOFSTEAM
