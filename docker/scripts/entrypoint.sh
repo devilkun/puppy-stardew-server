@@ -165,8 +165,13 @@ start_gpu_xorg() {
 }
 
 # =============================================
-# Phase 1: Root Initialization (Permission Fixes)
-# 阶段1：Root 初始化（权限修复）
+# Phase 1: Root Initialization
+# 阶段1：Root 初始化
+#
+# Permission fixes are handled by the init container (init-container.sh).
+# This phase only handles GPU Xorg startup (requires root) and user switch.
+# 权限修复由初始化容器 (init-container.sh) 处理。
+# 此阶段仅处理 GPU Xorg 启动（需要 root）和用户切换。
 # =============================================
 
 if [ "$(id -u)" = "0" ]; then
@@ -175,56 +180,21 @@ if [ "$(id -u)" = "0" ]; then
     log_step "  阶段1：Root 初始化"
     log_step "================================================"
 
-    # Fix libcurl compatibility for SteamCMD
-    log_info "Setting up libcurl compatibility..."
-    if [ ! -f "/usr/lib/x86_64-linux-gnu/libcurl.so.4" ]; then
-        rm -f /usr/lib/x86_64-linux-gnu/libcurl.so.4 2>/dev/null || true
+    # Fix libcurl compatibility for SteamCMD (idempotent, fast)
+    if [ ! -e "/usr/lib/x86_64-linux-gnu/libcurl.so.4" ]; then
         ln -sf /usr/lib/i386-linux-gnu/libcurl.so.4 /usr/lib/x86_64-linux-gnu/libcurl.so.4
         log_info "✅ libcurl symlink created"
-    else
-        log_info "✅ libcurl already configured"
-    fi
-
-    # Fix data directory permissions
-    log_info "Checking and fixing file permissions..."
-    DIRS_TO_CHECK=(
-        "/home/steam/.config/StardewValley"
-        "/home/steam/stardewvalley"
-        "/home/steam/Steam"
-        "/home/steam/.local/share/puppy-stardew/logs"
-    )
-
-    FIXED_COUNT=0
-    for dir in "${DIRS_TO_CHECK[@]}"; do
-        if [ -d "$dir" ]; then
-            # Check if any files are not owned by steam user (UID 1000)
-            WRONG_OWNER=$(find "$dir" ! -user steam 2>/dev/null | wc -l)
-            if [ "$WRONG_OWNER" -gt 0 ]; then
-                log_warn "Found $WRONG_OWNER file(s) with incorrect ownership in $dir"
-                log_info "Fixing permissions..."
-                chown -R steam:steam "$dir" 2>/dev/null || true
-                FIXED_COUNT=$((FIXED_COUNT + WRONG_OWNER))
-            fi
-        fi
-    done
-
-    if [ "$FIXED_COUNT" -gt 0 ]; then
-        log_info "✅ Fixed permissions for $FIXED_COUNT file(s)"
-    else
-        log_info "✅ All permissions correct"
     fi
 
     # Try to start Xorg in root phase if USE_GPU=true
-    # 如果启用了 GPU 加速，尝试在 root 阶段启动 Xorg
+    # Xorg requires root privileges to access /dev/dri
     if [ "$USE_GPU" = "true" ]; then
         start_gpu_xorg "root" || {
-            log_warn "GPU startup in root phase unsuccessful, will fallback in steam phase"
-            log_warn "root 阶段 GPU 启动尝试未成功，将在 steam 阶段尝试回退逻辑"
+            log_warn "GPU startup in root phase unsuccessful, will fallback to Xvfb"
         }
     fi
 
     log_info "Switching to steam user..."
-    log_info "================================================"
 
     # Re-execute this script as steam user
     exec runuser -u steam -- env DISPLAY="$DISPLAY" "$0" "$@"
@@ -247,14 +217,26 @@ if [ "$(id -u)" != "1000" ]; then
     exit 1
 fi
 
-# Step 1: Validate Steam credentials
+# Step 1: Validate Steam credentials (supports Docker Secrets)
+# 步骤 1：验证 Steam 凭证（支持 Docker Secrets）
 log_step "Step 1: Validating configuration..."
+
+# Docker Secrets support: read from /run/secrets/ if env vars are empty
+# Docker Secrets 支持：如果环境变量为空，从 /run/secrets/ 读取
+if [ -z "$STEAM_USERNAME" ] && [ -f "/run/secrets/steam_username" ]; then
+    STEAM_USERNAME=$(cat /run/secrets/steam_username | tr -d '\n')
+    log_info "Steam username loaded from Docker Secret"
+fi
+if [ -z "$STEAM_PASSWORD" ] && [ -f "/run/secrets/steam_password" ]; then
+    STEAM_PASSWORD=$(cat /run/secrets/steam_password | tr -d '\n')
+    log_info "Steam password loaded from Docker Secret"
+fi
 
 if [ -z "$STEAM_USERNAME" ] || [ -z "$STEAM_PASSWORD" ]; then
     log_error "STEAM_USERNAME or STEAM_PASSWORD not set!"
     log_error "STEAM_USERNAME 或 STEAM_PASSWORD 未设置！"
-    log_error "Please configure .env file."
-    log_error "请配置 .env 文件。"
+    log_error "Set via .env file or Docker Secrets."
+    log_error "通过 .env 文件或 Docker Secrets 设置。"
     exit 1
 fi
 
@@ -307,7 +289,7 @@ else
 fi
 
 # Step 4: Install mods
-log_step "Step 5: Installing mods..."
+log_step "Step 4: Installing mods..."
 
 mkdir -p /home/steam/stardewvalley/Mods
 
@@ -326,8 +308,36 @@ if [ -d "/home/steam/preinstalled-mods" ]; then
     done
 fi
 
+# Step 4.5: Install user-provided mods from custom-mods volume
+# 步骤 4.5：从 custom-mods 卷安装用户提供的模组
+CUSTOM_MODS_DIR="/home/steam/custom-mods"
+if [ -d "$CUSTOM_MODS_DIR" ] && [ "$(ls -A "$CUSTOM_MODS_DIR" 2>/dev/null)" ]; then
+    log_step "Step 4.5: Installing custom mods..."
+    log_info "Found custom mods in $CUSTOM_MODS_DIR"
+
+    for mod_entry in "$CUSTOM_MODS_DIR"/*; do
+        mod_name=$(basename "$mod_entry")
+
+        # Skip hidden files
+        [[ "$mod_name" == .* ]] && continue
+
+        if [ -d "$mod_entry" ]; then
+            # It's a mod directory - copy to Mods/
+            log_info "  Installing mod: $mod_name"
+            cp -r "$mod_entry" "/home/steam/stardewvalley/Mods/$mod_name"
+        elif [[ "$mod_entry" == *.zip ]]; then
+            # It's a zip file - extract to Mods/
+            log_info "  Extracting mod: $mod_name"
+            unzip -q -o "$mod_entry" -d "/home/steam/stardewvalley/Mods/" 2>/dev/null || {
+                log_warn "  ⚠ Failed to extract: $mod_name"
+            }
+        fi
+    done
+    log_info "✓ Custom mods installed"
+fi
+
 # Step 5: Setup virtual display
-log_step "Step 6: Starting virtual display..."
+log_step "Step 5: Starting virtual display..."
 
 # Check if Xorg is already running from root phase
 START_XVFB_FALLBACK=false
@@ -363,7 +373,7 @@ fi
 
 # Step 6: Start VNC server (optional)
 if [ "$ENABLE_VNC" = "true" ]; then
-    log_step "Step 7: Starting VNC server..."
+    log_step "Step 6: Starting VNC server..."
 
     VNC_PASSWORD=${VNC_PASSWORD:-"stardew1"}
 
@@ -400,12 +410,11 @@ if [ "$ENABLE_VNC" = "true" ]; then
         log_error "Check logs above for errors"
     fi
 else
-    log_step "Step 7: VNC disabled (set ENABLE_VNC=true to enable)"
+    log_step "Step 6: VNC disabled (set ENABLE_VNC=true to enable)"
 fi
 
 # Step 7: Setup optimized game config for VNC display
-# 步骤 7.5：为VNC显示设置优化的游戏配置
-log_step "Step 7.5: Configuring game display settings..."
+log_step "Step 7: Configuring game display settings..."
 
 CONFIG_DIR="/home/steam/.config/StardewValley"
 CONFIG_FILE="$CONFIG_DIR/startup_preferences"
@@ -426,6 +435,12 @@ if [ ! -f "$CONFIG_FILE" ]; then
     fi
 else
     log_info "✓ Game config already exists, keeping user settings"
+fi
+
+# Step 7.5: Select save if specified
+if [ -n "$SAVE_NAME" ]; then
+    log_step "Step 7.5: Selecting save file..."
+    /home/steam/scripts/save-selector.sh
 fi
 
 # Step 8: Start log monitoring (optional)
@@ -468,18 +483,33 @@ log_info ""
 cd /home/steam/stardewvalley
 
 # Start unified event handler in background
-# 启动统一事件处理器（替代原来的4个独立监控脚本）
 log_info "Starting unified event handler..."
-log_info "启动统一事件处理器..."
 /home/steam/scripts/event-handler.sh &
 
 # Start auto-backup if enabled
-# 启动自动备份（如果启用）
 if [ "$ENABLE_AUTO_BACKUP" = "true" ]; then
     log_info "Starting auto-backup service..."
-    log_info "启动自动备份服务..."
     /home/steam/scripts/auto-backup.sh &
 fi
 
-# Run game server (this runs in foreground)
-exec ./StardewModdingAPI --server
+# Start status reporter (Prometheus metrics + JSON status)
+log_info "Starting status reporter (metrics port: ${METRICS_PORT:-9090})..."
+/home/steam/scripts/status-reporter.sh &
+
+# Start player access control if configured
+if [ -f "/home/steam/.config/StardewValley/player-access.conf" ]; then
+    log_info "Starting player access control..."
+    /home/steam/scripts/player-access.sh &
+fi
+
+# Start crash monitor if enabled
+if [ "$ENABLE_CRASH_RESTART" = "true" ]; then
+    log_info "Starting game with crash auto-restart..."
+    log_info "启动游戏（崩溃自动重启模式）..."
+
+    # Use crash-monitor.sh which wraps game in restart loop
+    exec /home/steam/scripts/crash-monitor.sh
+else
+    # Run game with exec (traditional, container exits on crash)
+    exec ./StardewModdingAPI --server
+fi

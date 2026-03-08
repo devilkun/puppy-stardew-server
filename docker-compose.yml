@@ -14,10 +14,29 @@
 # ============================================
 
 services:
+  # Init container: fixes permissions before main server starts
+  # 初始化容器：在主服务器启动前修复权限
+  stardew-init:
+    image: truemanlive/puppy-stardew-server:v1.0.66
+    container_name: puppy-stardew-init
+    user: root
+    entrypoint: ["/home/steam/scripts/init-container.sh"]
+    environment:
+      - USE_GPU=${USE_GPU:-false}
+    volumes:
+      - ./data/saves:/home/steam/.config/StardewValley:rw
+      - ./data/game:/home/steam/stardewvalley:rw
+      - ./data/steam:/home/steam/Steam:rw
+      - ./data/logs:/home/steam/.local/share/puppy-stardew/logs:rw
+      - ./data/backups:/home/steam/.local/share/puppy-stardew/backups:rw
+
   stardew-server:
     image: truemanlive/puppy-stardew-server:v1.0.66
     container_name: puppy-stardew
     restart: unless-stopped  # Keep running after Steam Guard
+    depends_on:
+      stardew-init:
+        condition: service_completed_successfully
     # Interactive mode for Steam Guard
     # Steam Guard 交互模式
     stdin_open: true
@@ -38,7 +57,7 @@ services:
       # VNC settings - OPTIONAL (for first-time setup)
       # VNC 设置 - 可选（用于首次设置）
       - ENABLE_VNC=${ENABLE_VNC:-true}
-      - VNC_PASSWORD=${VNC_PASSWORD:-stardew123}
+      - VNC_PASSWORD=${VNC_PASSWORD:-stardew1}
 
       # Log monitoring - OPTIONAL (default: enabled)
       # 日志监控 - 可选（默认：启用）
@@ -60,6 +79,19 @@ services:
       - MAX_BACKUPS=${MAX_BACKUPS:-7}
       - BACKUP_HOUR=${BACKUP_HOUR:-4}
 
+      # Crash auto-restart - OPTIONAL (default: disabled)
+      # 崩溃自动重启 - 可选（默认：禁用）
+      - ENABLE_CRASH_RESTART=${ENABLE_CRASH_RESTART:-false}
+      - MAX_CRASH_RESTARTS=${MAX_CRASH_RESTARTS:-5}
+
+      # Save selection - OPTIONAL (default: auto-detect)
+      # 存档选择 - 可选（默认：自动检测）
+      - SAVE_NAME=${SAVE_NAME:-}
+
+      # Prometheus metrics port - OPTIONAL (default: 9090)
+      # Prometheus 指标端口 - 可选（默认：9090）
+      - METRICS_PORT=${METRICS_PORT:-9090}
+
     # Port mappings
     # 端口映射
     ports:
@@ -70,6 +102,10 @@ services:
       # VNC port (OPTIONAL - only needed for initial setup)
       # VNC 端口（可选 - 仅首次设置需要）
       - "5900:5900/tcp"
+
+      # Prometheus metrics port (OPTIONAL - for monitoring)
+      # Prometheus 指标端口（可选 - 用于监控）
+      - "9090:9090/tcp"
 
     # Persistent data volumes (bind mounts)
     # 持久化数据卷（绑定挂载）
@@ -85,6 +121,11 @@ services:
       - ./data/steam:/home/steam/Steam:rw
       - ./data/logs:/home/steam/.local/share/puppy-stardew/logs:rw
       - ./data/backups:/home/steam/.local/share/puppy-stardew/backups:rw
+      # Custom mods volume (OPTIONAL - place your mods here)
+      # 自定义模组卷（可选 - 将您的模组放在这里）
+      # Supports: mod directories or .zip files
+      # 支持：模组目录或 .zip 文件
+      - ./data/custom-mods:/home/steam/custom-mods:ro
 
     # GPU device mapping (OPTIONAL - only needed if USE_GPU=true)
     # GPU 设备映射（可选 - 仅当 USE_GPU=true 时需要）
@@ -126,6 +167,16 @@ services:
       retries: 3
       start_period: 180s  # Give 3 minutes for startup
 
+    # Security options - reduce container privileges
+    # 安全选项 - 减少容器权限
+    #
+    # Drop unnecessary Linux capabilities
+    # 丢弃不必要的 Linux 功能
+    cap_drop:
+      - NET_RAW
+      - SYS_ADMIN
+      - MKNOD
+
     # Logging configuration (prevents log files from growing too large)
     # 日志配置（防止日志文件过大）
     logging:
@@ -136,3 +187,30 @@ services:
 
 # No named volumes - using bind mounts for easier backup and management
 # 不使用命名卷 - 使用绑定挂载以便于备份和管理
+
+# ============================================
+# Docker Secrets (OPTIONAL - more secure alternative to .env)
+# Docker Secrets（可选 - 比 .env 更安全的替代方案）
+#
+# To use secrets instead of .env:
+# 使用 secrets 代替 .env：
+#
+# 1. Create secret files:
+#    echo "your_username" > secrets/steam_username.txt
+#    echo "your_password" > secrets/steam_password.txt
+#    chmod 600 secrets/*.txt
+#
+# 2. Uncomment the secrets sections below and in stardew-server
+# 3. Remove STEAM_USERNAME and STEAM_PASSWORD from environment
+#
+# secrets:
+#   steam_username:
+#     file: ./secrets/steam_username.txt
+#   steam_password:
+#     file: ./secrets/steam_password.txt
+#
+# Then add to stardew-server service:
+#   secrets:
+#     - steam_username
+#     - steam_password
+# ============================================
