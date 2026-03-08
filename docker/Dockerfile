@@ -14,7 +14,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 LABEL maintainer="truemanlive" \
       description="Stardew Valley dedicated server with auto-pause and instant sleep" \
-      version="1.0.63"
+      version="1.0.64"
 
 # Enable 32-bit architecture for SteamCMD
 # 启用32位架构支持以安装SteamCMD
@@ -30,21 +30,13 @@ RUN dpkg --add-architecture i386 && \
     tmux \
     net-tools \
     procps \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install virtual display and VNC dependencies
-# 安装虚拟显示和 VNC 依赖
-RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1-mesa-dri libgl1-mesa-glx mesa-utils libegl1-mesa \
+    xserver-xorg-core xserver-xorg-video-modesetting x11-xserver-utils x11-apps \
     xvfb \
     x11vnc \
     openbox \
     expect \
     xdotool \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install .NET runtime (required for game mods)
-# 安装 .NET 运行时（模组需要）
-RUN apt-get update && apt-get install -y --no-install-recommends \
     dotnet-runtime-6.0 \
     && rm -rf /var/lib/apt/lists/*
 
@@ -52,7 +44,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # 创建非 root 用户以提高安全性
 RUN useradd -m -s /bin/bash steam && \
     mkdir -p /home/steam/steamcmd /home/steam/stardewvalley /home/steam/.config/StardewValley && \
-    chown -R steam:steam /home/steam
+    chown -R steam:steam /home/steam && \
+    usermod -aG video steam || true
+
+# Xorg modesetting config for using Intel/AMD integrated GPUs (glamor + DRI3)
+# 为 Xorg 创建配置文件以启用 modesetting/glamor
+RUN mkdir -p /etc/X11/xorg.conf.d && \
+    cat > /etc/X11/xorg.conf.d/20-modesetting.conf <<'EOF'
+Section "Device"
+  Identifier "IntelGPU0"
+  Driver "modesetting"
+  Option "AccelMethod" "glamor"
+  Option "DRI" "3"
+EndSection
+EOF
 
 # Set working directory and switch to steam user
 WORKDIR /home/steam
@@ -88,11 +93,15 @@ COPY --chown=steam:steam scripts/auto-enable-server.sh /home/steam/scripts/auto-
 COPY --chown=steam:steam scripts/auto-handle-readycheck.sh /home/steam/scripts/auto-handle-readycheck.sh
 COPY --chown=steam:steam scripts/auto-reconnect-server.sh /home/steam/scripts/auto-reconnect-server.sh
 COPY --chown=steam:steam scripts/vnc-monitor.sh /home/steam/scripts/vnc-monitor.sh
+COPY --chown=steam:steam scripts/set-resolution.sh /home/steam/scripts/set-resolution.sh
 RUN chmod +x /home/steam/entrypoint.sh /home/steam/scripts/*.sh
 
 # Copy optimized game config template for VNC display
 # 复制VNC显示优化的游戏配置模板
 COPY --chown=steam:steam config/startup_preferences /home/steam/startup_preferences.template
+# Copy Xorg monitor config to set a default resolution
+# 复制 Xorg 显示器配置以设置默认分辨率
+COPY --chown=steam:steam config/10-monitor.conf /etc/X11/xorg.conf.d/10-monitor.conf
 
 # Run as root to allow permission fixes on startup
 # 以 root 身份运行以允许启动时修复权限

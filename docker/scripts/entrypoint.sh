@@ -1,6 +1,6 @@
 #!/bin/bash
-# Puppy Stardew Server Entrypoint Script - v1.0.61
-# 小狗星谷服务器启动脚本 - v1.0.61
+# Puppy Stardew Server Entrypoint Script - v1.0.64
+# 小狗星谷服务器启动脚本 - v1.0.64
 
 # DO NOT use set -e - we need manual error handling
 # 不使用 set -e - 需要手动错误处理
@@ -12,6 +12,11 @@ RED='\033[0;31m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 NC='\033[0m'
+
+# Resolution environment variables with defaults
+RESOLUTION_WIDTH=${RESOLUTION_WIDTH:-1280}
+RESOLUTION_HEIGHT=${RESOLUTION_HEIGHT:-720}
+REFRESH_RATE=${REFRESH_RATE:-60}
 
 # Logging functions
 log_info() {
@@ -88,6 +93,68 @@ download_game_via_steam() {
 }
 
 # =============================================
+# GPU-related helper function
+# GPU 加速相关辅助函数
+# =============================================
+start_gpu_xorg() {
+    local context=${1:-"unknown"}
+    if [ "$USE_GPU" != "true" ]; then
+        log_warn "USE_GPU != true, skipping GPU startup (context: $context)"
+        log_warn "USE_GPU != true，跳过 GPU 启动逻辑（context: $context）"
+        return 3
+    fi
+
+    log_info "USE_GPU=true -> Attempting to start Xorg :99 for GPU rendering (context: $context)"
+    log_info "USE_GPU=true -> 在 ${context} 阶段尝试启动 Xorg :99 以使用 GPU 渲染"
+    rm -f /tmp/.X99-lock /tmp/.X11-unix/X99 2>/dev/null || true
+
+    if [ -e /dev/dri/renderD128 ] || ls /dev/dri 2>/dev/null | grep -q .; then
+        log_info "Detected /dev/dri, starting Xorg :99 (context: $context)"
+        log_info "检测到 /dev/dri，准备启动 Xorg :99 (context: $context)"
+
+        # Ensure X socket directory exists with correct permissions
+        mkdir -p /tmp/.X11-unix
+        chmod 1777 /tmp/.X11-unix
+
+        # Ensure Xorg log directory exists
+        mkdir -p /home/steam/.local/share/xorg
+        if [ "$(id -u)" = "0" ]; then
+            chown root:root /home/steam/.local/share/xorg 2>/dev/null || true
+        fi
+
+        # Start Xorg in background
+        Xorg -noreset +extension GLX +extension RANDR :99 -logfile /home/steam/.local/share/xorg/Xorg.0.log &
+        sleep 2
+
+        # Set resolution via set-resolution.sh
+        DISPLAY=:99 /home/steam/scripts/set-resolution.sh "${RESOLUTION_WIDTH}" "${RESOLUTION_HEIGHT}" "${REFRESH_RATE}" || {
+            log_warn "Failed to set resolution (context: $context), continuing with default"
+            log_warn "设置分辨率失败（context: $context），将继续使用默认分辨率"
+        }
+        sleep 1
+
+        if pgrep -x Xorg >/dev/null 2>&1; then
+            export DISPLAY=${DISPLAY:-:99}
+            log_info "✓ Xorg started on :99 (context: $context)"
+            log_info "✓ Xorg 已在 :99 启动（context: $context）"
+            if command -v glxinfo >/dev/null 2>&1; then
+                log_info "OpenGL renderer:"
+                glxinfo | grep -i "OpenGL renderer" | head -n 1 || true
+            fi
+            return 0
+        else
+            log_warn "Xorg failed to start (context: $context)"
+            log_warn "Xorg 未能在 ${context} 阶段启动"
+            return 2
+        fi
+    else
+        log_warn "/dev/dri not detected, skipping Xorg startup (context: $context)"
+        log_warn "/dev/dri 未检测到或不可访问，跳过 Xorg 启动（context: $context）"
+        return 1
+    fi
+}
+
+# =============================================
 # Phase 1: Root Initialization (Permission Fixes)
 # 阶段1：Root 初始化（权限修复）
 # =============================================
@@ -137,11 +204,20 @@ if [ "$(id -u)" = "0" ]; then
         log_info "✅ All permissions correct"
     fi
 
+    # Try to start Xorg in root phase if USE_GPU=true
+    # 如果启用了 GPU 加速，尝试在 root 阶段启动 Xorg
+    if [ "$USE_GPU" = "true" ]; then
+        start_gpu_xorg "root" || {
+            log_warn "GPU startup in root phase unsuccessful, will fallback in steam phase"
+            log_warn "root 阶段 GPU 启动尝试未成功，将在 steam 阶段尝试回退逻辑"
+        }
+    fi
+
     log_info "Switching to steam user..."
     log_info "================================================"
 
     # Re-execute this script as steam user
-    exec runuser -u steam -- "$0" "$@"
+    exec runuser -u steam -- env DISPLAY="$DISPLAY" "$0" "$@"
 fi
 
 # =============================================
@@ -150,8 +226,8 @@ fi
 # =============================================
 
 log_step "================================================"
-log_step "  Puppy Stardew Server v1.0.61 Starting..."
-log_step "  小狗星谷服务器 v1.0.61 启动中..."
+log_step "  Puppy Stardew Server v1.0.64 Starting..."
+log_step "  小狗星谷服务器 v1.0.64 启动中..."
 log_step "================================================"
 
 # Verify we're running as steam user
@@ -243,12 +319,37 @@ fi
 # Step 5: Setup virtual display
 log_step "Step 6: Starting virtual display..."
 
-rm -f /tmp/.X99-lock /tmp/.X11-unix/X99 2>/dev/null || true
-Xvfb :99 -screen 0 1280x720x24 -ac +extension GLX +render -noreset &
-export DISPLAY=:99
-sleep 3
+# Check if Xorg is already running from root phase
+START_XVFB_FALLBACK=false
 
-log_info "✓ Virtual display started on :99 (1280x720)"
+if pgrep -x Xorg >/dev/null 2>&1; then
+    export DISPLAY=${DISPLAY:-:99}
+    log_info "Detected Xorg process, using DISPLAY=${DISPLAY}"
+    log_info "检测到 Xorg 进程，使用 DISPLAY=${DISPLAY}"
+    if command -v glxinfo >/dev/null 2>&1; then
+        log_info "OpenGL renderer:"
+        glxinfo | grep -i "OpenGL renderer" | head -n 1 || true
+    fi
+else
+    # Fallback to Xvfb if GPU not enabled or failed
+    if [ "$USE_GPU" = "true" ]; then
+        log_warn "Xorg not running in steam phase, falling back to Xvfb"
+        log_warn "steam 阶段 Xorg 未运行，回退到 Xvfb（软件渲染）"
+    fi
+    START_XVFB_FALLBACK=true
+fi
+
+# Start Xvfb as fallback
+if [ "$START_XVFB_FALLBACK" = "true" ]; then
+    log_info "Starting Xvfb (software rendering fallback)..."
+    log_info "启动 Xvfb（软件渲染后备）..."
+    rm -f /tmp/.X99-lock /tmp/.X11-unix/X99 2>/dev/null || true
+    Xvfb :99 -screen 0 ${RESOLUTION_WIDTH}x${RESOLUTION_HEIGHT}x24 -ac +extension GLX +render -noreset &
+    export DISPLAY=${DISPLAY:-:99}
+    sleep 3
+    log_info "✓ Virtual display started on ${DISPLAY} (${RESOLUTION_WIDTH}x${RESOLUTION_HEIGHT})"
+    log_info "✓ 虚拟显示已启动 ${DISPLAY} (${RESOLUTION_WIDTH}x${RESOLUTION_HEIGHT})"
+fi
 
 # Step 6: Start VNC server (optional)
 if [ "$ENABLE_VNC" = "true" ]; then
@@ -261,12 +362,12 @@ if [ "$ENABLE_VNC" = "true" ]; then
         VNC_PASSWORD="${VNC_PASSWORD:0:8}"
     fi
 
-    # Wait for Xvfb to be fully ready
+    # Wait for X server to be fully ready
     sleep 2
 
-    # Start x11vnc with plaintext password (more reliable than password file)
-    log_info "Starting x11vnc on port 5900..."
-    x11vnc -display :99 -forever -shared -passwd "$VNC_PASSWORD" -rfbport 5900 -noxdamage -bg 2>&1 | grep -v "^$"
+    # Start x11vnc pointing to current DISPLAY
+    log_info "Starting x11vnc on display ${DISPLAY} (port 5900)..."
+    x11vnc -display "${DISPLAY}" -forever -shared -passwd "$VNC_PASSWORD" -rfbport 5900 -noxdamage -bg 2>&1 | grep -v "^$"
 
     # Wait for x11vnc to start
     sleep 2
