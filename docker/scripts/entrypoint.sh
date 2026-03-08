@@ -1,6 +1,6 @@
 #!/bin/bash
-# Puppy Stardew Server Entrypoint Script - v1.0.64
-# 小狗星谷服务器启动脚本 - v1.0.64
+# Puppy Stardew Server Entrypoint Script - v1.0.65
+# 小狗星谷服务器启动脚本 - v1.0.65
 
 # DO NOT use set -e - we need manual error handling
 # 不使用 set -e - 需要手动错误处理

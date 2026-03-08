@@ -4,10 +4,10 @@
 #
 # When players stay up past 2 AM, they pass out and should automatically rest.
 # Sometimes the host fails to trigger rest, causing the game to freeze.
-# This script detects the passout event and simulates movement to trigger rest.
+# This script detects the passout event and confirms dialogs to proceed.
 # 当玩家熬夜到凌晨2点，会晕倒并自动休息。
 # 有时主机无法触发休息，导致游戏卡住。
-# 此脚本检测晕倒事件并模拟移动来触发休息。
+# 此脚本检测晕倒事件并确认对话框以继续游戏。
 
 SMAPI_LOG="/home/steam/.config/StardewValley/ErrorLogs/SMAPI-latest.txt"
 CHECK_INTERVAL=5  # Check every 5 seconds
@@ -26,66 +26,65 @@ export DISPLAY=:99
 log "等待游戏初始化..."
 sleep 20
 
-# Track last handled time to avoid duplicate handling
-LAST_HANDLE_TIME=0
+# Track last handled count to avoid duplicate handling (count-based deduplication)
+# 使用计数器方式去重，避免同一事件重复触发
+LAST_PASSOUT_COUNT=0
+
+# Initialize baseline count after game starts
+if [ -f "$SMAPI_LOG" ]; then
+    LAST_PASSOUT_COUNT=$(grep -ciE "passed out|exhausted|collapsed" "$SMAPI_LOG" 2>/dev/null || echo "0")
+    log "初始基线计数: $LAST_PASSOUT_COUNT"
+fi
 
 while true; do
     if [ -f "$SMAPI_LOG" ]; then
-        CURRENT_TIME=$(date +%s)
+        # Count passout event occurrences in log (count-based approach prevents re-triggering)
+        # 统计日志中晕倒事件的总次数（基于计数的方式防止重复触发）
+        CURRENT_PASSOUT_COUNT=$(grep -ciE "passed out|exhausted|collapsed" "$SMAPI_LOG" 2>/dev/null || echo "0")
 
-        # Must be at least 30 seconds since last handle
-        if [ $((CURRENT_TIME - LAST_HANDLE_TIME)) -lt 30 ]; then
-            sleep $CHECK_INTERVAL
-            continue
-        fi
-
-        # Get recent log (last 50 lines to catch passout events)
-        RECENT_LOG=$(tail -50 "$SMAPI_LOG" 2>/dev/null)
-
-        # Detect passout/exhaustion patterns
-        # Look for: "passed out", "exhausted", "collapsed", or time >= 2600 (2AM)
-        if echo "$RECENT_LOG" | grep -qiE "passed out|exhausted|collapsed|fell asleep"; then
-            log "⚠️ 检测到玩家晕倒事件（凌晨2点）"
+        # Only trigger if count increased (new event detected)
+        # 仅当计数增加时触发（检测到新事件）
+        if [ "$CURRENT_PASSOUT_COUNT" -gt "$LAST_PASSOUT_COUNT" ]; then
+            log "⚠️ 检测到新的晕倒事件（计数: $LAST_PASSOUT_COUNT -> $CURRENT_PASSOUT_COUNT）"
 
             # Wait for event to fully trigger
-            sleep 2
+            sleep 3
 
             if command -v xdotool >/dev/null 2>&1; then
-                log "尝试触发主机休息..."
+                log "尝试确认晕倒对话框..."
 
-                # Step 1: Press F9 to activate game window
-                log "  步骤 1: 按 F9 激活游戏窗口..."
-                xdotool key F9
-                sleep 1
-
-                # Step 2: Move character to trigger rest animation
-                log "  步骤 2: 移动角色触发休息动画..."
-                # Move down, up, left, right to ensure character moves
-                xdotool key Down
-                sleep 0.3
-                xdotool key Up
-                sleep 0.3
-                xdotool key Left
-                sleep 0.3
-                xdotool key Right
+                # Press Escape to close any menus first
+                log "  步骤 1: 关闭可能的菜单..."
+                xdotool key Escape
                 sleep 0.5
 
-                # Step 3: Press Enter to confirm any dialogs
-                log "  步骤 3: 按 Enter 确认对话框..."
-                xdotool key Return
-                sleep 0.5
-                xdotool key Return
+                # Press Enter multiple times to confirm all dialogs/settlement screens
+                log "  步骤 2: 连续确认对话框..."
+                for i in 1 2 3 4 5; do
+                    xdotool key Return
+                    sleep 1
+                done
 
-                log "✅ 已尝试触发主机休息"
+                log "✅ 已尝试确认晕倒对话框"
 
-                # Record handle time
-                LAST_HANDLE_TIME=$(date +%s)
-
-                # Wait longer before next check
-                sleep 30
+                # Verify if new day started (optional validation)
+                sleep 5
+                if tail -20 "$SMAPI_LOG" 2>/dev/null | grep -qiE "Saving|woke up|Day [0-9]"; then
+                    log "✅ 确认：新的一天已开始"
+                fi
             else
                 log "❌ xdotool 未安装，无法自动处理"
             fi
+
+            # Update last handled count
+            LAST_PASSOUT_COUNT=$CURRENT_PASSOUT_COUNT
+        fi
+
+        # Handle log rotation (count decreased means log was cleared/rotated)
+        # 处理日志轮转（计数减少意味着日志被清空/轮转）
+        if [ "$CURRENT_PASSOUT_COUNT" -lt "$LAST_PASSOUT_COUNT" ]; then
+            log "ℹ️ 日志可能已轮转，重置计数器"
+            LAST_PASSOUT_COUNT=$CURRENT_PASSOUT_COUNT
         fi
     fi
 
