@@ -311,8 +311,11 @@ docker attach puppy-stardew
    - VNC 客户端：[RealVNC](https://www.realvnc.com/en/connect/download/viewer/)、[TightVNC](https://www.tightvnc.com/) 或任何 VNC 查看器
 
 2. **在 VNC 窗口中：**
-   - 创建新农场，或
-   - 加载现有存档
+   - **创建新农场**：点击"合作"→"主机"→ 选择"起始小屋数量"
+     - **重要**：起始小屋数量 = 可以加入的玩家数量（不包括主机）
+     - 例如：选择"3个小屋"允许3个朋友加入（总共4名玩家）
+     - 如果选择"0个小屋"，其他玩家会看到"没有空闲位置"错误
+   - **加载现有存档**：点击"加载"→ 选择您的存档文件
 
 3. **加载完成后：**
    - ServerAutoLoad 模组会记住您的存档

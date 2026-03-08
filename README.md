@@ -251,8 +251,11 @@ After the server starts, you need to create or load a save file **once**:
    - VNC Client: [RealVNC](https://www.realvnc.com/en/connect/download/viewer/), [TightVNC](https://www.tightvnc.com/), or any VNC viewer
 
 2. **In the VNC window:**
-   - Create a new farm, or
-   - Load an existing save
+   - **For NEW farm**: Click "CO-OP" → "Host" → Select "Starting Cabins" (Number of Cabins)
+     - **IMPORTANT**: Starting Cabins = Number of players who can join (excluding host)
+     - Example: Select "3 Cabins" to allow 3 friends to join (4 players total)
+     - If you select "0 Cabins", other players will see "No available slots" error
+   - **For EXISTING save**: Click "Load" → Select your save file
 
 3. **Once loaded:**
    - The ServerAutoLoad mod will remember your save
