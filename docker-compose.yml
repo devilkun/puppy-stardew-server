@@ -15,7 +15,7 @@
 
 services:
   stardew-server:
-    image: truemanlive/puppy-stardew-server:v1.0.65
+    image: truemanlive/puppy-stardew-server:v1.0.66
     container_name: puppy-stardew
     restart: unless-stopped  # Keep running after Steam Guard
     # Interactive mode for Steam Guard
@@ -30,6 +30,10 @@ services:
       # Steam 凭证 - 必需
       - STEAM_USERNAME=${STEAM_USERNAME}
       - STEAM_PASSWORD=${STEAM_PASSWORD}
+
+      # Steam Guard code - OPTIONAL (for easier first-time auth)
+      # Steam Guard 验证码 - 可选（简化首次验证）
+      - STEAM_GUARD_CODE=${STEAM_GUARD_CODE:-}
 
       # VNC settings - OPTIONAL (for first-time setup)
       # VNC 设置 - 可选（用于首次设置）
@@ -49,6 +53,12 @@ services:
       - RESOLUTION_WIDTH=${RESOLUTION_WIDTH:-1280}
       - RESOLUTION_HEIGHT=${RESOLUTION_HEIGHT:-720}
       - REFRESH_RATE=${REFRESH_RATE:-60}
+
+      # Auto-backup - OPTIONAL (default: disabled)
+      # 自动备份 - 可选（默认：禁用）
+      - ENABLE_AUTO_BACKUP=${ENABLE_AUTO_BACKUP:-false}
+      - MAX_BACKUPS=${MAX_BACKUPS:-7}
+      - BACKUP_HOUR=${BACKUP_HOUR:-4}
 
     # Port mappings
     # 端口映射
@@ -74,6 +84,7 @@ services:
       - ./data/game:/home/steam/stardewvalley:rw
       - ./data/steam:/home/steam/Steam:rw
       - ./data/logs:/home/steam/.local/share/puppy-stardew/logs:rw
+      - ./data/backups:/home/steam/.local/share/puppy-stardew/backups:rw
 
     # GPU device mapping (OPTIONAL - only needed if USE_GPU=true)
     # GPU 设备映射（可选 - 仅当 USE_GPU=true 时需要）

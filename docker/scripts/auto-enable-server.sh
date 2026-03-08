@@ -6,9 +6,24 @@
 SMAPI_LOG="/home/steam/.config/StardewValley/ErrorLogs/SMAPI-latest.txt"
 MAX_WAIT=120  # 最多等待 120 秒
 CHECK_INTERVAL=2  # 每 2 秒检查一次
+LOCK_FILE="/tmp/stardew-key-lock"
+LOCK_TIMEOUT=10
 
 log() {
     echo -e "\033[0;36m[Auto-Enable-Server]\033[0m $1"
+}
+
+# Send key with mutex lock
+send_key_locked() {
+    local key="$1"
+    (
+        if flock -w "$LOCK_TIMEOUT" 200; then
+            xdotool key "$key" 2>/dev/null
+        else
+            log "⚠️ 无法获取按键锁"
+            return 1
+        fi
+    ) 200>"$LOCK_FILE"
 }
 
 log "启动 Always On Server 自动启用服务..."
@@ -69,7 +84,7 @@ while [ $elapsed -lt $MAX_WAIT ]; do
 
                     # 先按多次ESC关闭所有菜单
                     for i in 1 2 3; do
-                        xdotool key Escape
+                        send_key_locked Escape
                         sleep 0.3
                     done
 
@@ -77,7 +92,7 @@ while [ $elapsed -lt $MAX_WAIT ]; do
                     sleep 1
 
                     # 按F9启用Always On Server
-                    xdotool key F9
+                    send_key_locked F9
                     log "  ✓ F9 按键已发送（尝试 #$attempt）"
 
                     # 等待游戏响应

@@ -1,6 +1,6 @@
 #!/bin/bash
-# Puppy Stardew Server Entrypoint Script - v1.0.65
-# 小狗星谷服务器启动脚本 - v1.0.65
+# Puppy Stardew Server Entrypoint Script - v1.0.66
+# 小狗星谷服务器启动脚本 - v1.0.66
 
 # DO NOT use set -e - we need manual error handling
 # 不使用 set -e - 需要手动错误处理
@@ -64,10 +64,20 @@ download_game_via_steam() {
     log_info "========================================="
     log_info ""
 
+    # Support STEAM_GUARD_CODE environment variable for easier auth
+    # 支持 STEAM_GUARD_CODE 环境变量以简化验证
+    STEAM_GUARD_ARGS=""
+    if [ -n "$STEAM_GUARD_CODE" ]; then
+        log_info "Using Steam Guard code from environment variable"
+        log_info "使用环境变量中的 Steam Guard 验证码"
+        STEAM_GUARD_ARGS="+set_steam_guard_code $STEAM_GUARD_CODE"
+    fi
+
     # Run steamcmd WITHOUT pipe - this preserves stdin!
     # 运行 steamcmd 不使用管道 - 保留stdin！
     /home/steam/steamcmd/steamcmd.sh \
         +force_install_dir /home/steam/stardewvalley \
+        $STEAM_GUARD_ARGS \
         +login "$STEAM_USERNAME" "$STEAM_PASSWORD" \
         +app_update 413150 validate \
         +quit
@@ -226,8 +236,8 @@ fi
 # =============================================
 
 log_step "================================================"
-log_step "  Puppy Stardew Server v1.0.65 Starting..."
-log_step "  小狗星谷服务器 v1.0.65 启动中..."
+log_step "  Puppy Stardew Server v1.0.66 Starting..."
+log_step "  小狗星谷服务器 v1.0.66 启动中..."
 log_step "================================================"
 
 # Verify we're running as steam user
@@ -457,21 +467,19 @@ log_info ""
 
 cd /home/steam/stardewvalley
 
-# Start auto-enable script in background
-log_info "Starting auto-enable Always On Server script..."
-/home/steam/scripts/auto-enable-server.sh &
+# Start unified event handler in background
+# 启动统一事件处理器（替代原来的4个独立监控脚本）
+log_info "Starting unified event handler..."
+log_info "启动统一事件处理器..."
+/home/steam/scripts/event-handler.sh &
 
-# Start auto-handle ReadyCheckDialog script in background
-log_info "Starting auto-handle ReadyCheckDialog script..."
-/home/steam/scripts/auto-handle-readycheck.sh &
-
-# Start auto-reconnect server script in background
-log_info "Starting auto-reconnect server script..."
-/home/steam/scripts/auto-reconnect-server.sh &
-
-# Start auto-handle passout script in background
-log_info "Starting auto-handle passout (2AM) script..."
-/home/steam/scripts/auto-handle-passout.sh &
+# Start auto-backup if enabled
+# 启动自动备份（如果启用）
+if [ "$ENABLE_AUTO_BACKUP" = "true" ]; then
+    log_info "Starting auto-backup service..."
+    log_info "启动自动备份服务..."
+    /home/steam/scripts/auto-backup.sh &
+fi
 
 # Run game server (this runs in foreground)
 exec ./StardewModdingAPI --server
