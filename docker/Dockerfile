@@ -14,7 +14,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 LABEL maintainer="truemanlive" \
       description="Stardew Valley dedicated server with auto-pause and instant sleep" \
-      version="1.0.64"
+      version="1.0.65"
 
 # Enable 32-bit architecture for SteamCMD
 # 启用32位架构支持以安装SteamCMD
@@ -92,6 +92,7 @@ COPY --chown=steam:steam scripts/view-logs.sh /home/steam/scripts/view-logs.sh
 COPY --chown=steam:steam scripts/auto-enable-server.sh /home/steam/scripts/auto-enable-server.sh
 COPY --chown=steam:steam scripts/auto-handle-readycheck.sh /home/steam/scripts/auto-handle-readycheck.sh
 COPY --chown=steam:steam scripts/auto-reconnect-server.sh /home/steam/scripts/auto-reconnect-server.sh
+COPY --chown=steam:steam scripts/auto-handle-passout.sh /home/steam/scripts/auto-handle-passout.sh
 COPY --chown=steam:steam scripts/vnc-monitor.sh /home/steam/scripts/vnc-monitor.sh
 COPY --chown=steam:steam scripts/set-resolution.sh /home/steam/scripts/set-resolution.sh
 RUN chmod +x /home/steam/entrypoint.sh /home/steam/scripts/*.sh

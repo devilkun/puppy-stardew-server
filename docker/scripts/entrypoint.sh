@@ -226,8 +226,8 @@ fi
 # =============================================
 
 log_step "================================================"
-log_step "  Puppy Stardew Server v1.0.64 Starting..."
-log_step "  小狗星谷服务器 v1.0.64 启动中..."
+log_step "  Puppy Stardew Server v1.0.65 Starting..."
+log_step "  小狗星谷服务器 v1.0.65 启动中..."
 log_step "================================================"
 
 # Verify we're running as steam user
@@ -468,6 +468,10 @@ log_info "Starting auto-handle ReadyCheckDialog script..."
 # Start auto-reconnect server script in background
 log_info "Starting auto-reconnect server script..."
 /home/steam/scripts/auto-reconnect-server.sh &
+
+# Start auto-handle passout script in background
+log_info "Starting auto-handle passout (2AM) script..."
+/home/steam/scripts/auto-handle-passout.sh &
 
 # Run game server (this runs in foreground)
 exec ./StardewModdingAPI --server
