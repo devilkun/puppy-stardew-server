@@ -11,9 +11,24 @@
 
 SMAPI_LOG="/home/steam/.config/StardewValley/ErrorLogs/SMAPI-latest.txt"
 CHECK_INTERVAL=5  # Check every 5 seconds
+LOCK_FILE="/tmp/stardew-key-lock"
+LOCK_TIMEOUT=10
 
 log() {
     echo -e "\033[0;33m[Auto-Handle-Passout]\033[0m $1"
+}
+
+# Send key with mutex lock
+send_key_locked() {
+    local key="$1"
+    (
+        if flock -w "$LOCK_TIMEOUT" 200; then
+            xdotool key "$key" 2>/dev/null
+        else
+            log "⚠️ 无法获取按键锁"
+            return 1
+        fi
+    ) 200>"$LOCK_FILE"
 }
 
 log "启动凌晨2点晕倒自动处理服务..."
@@ -55,13 +70,13 @@ while true; do
 
                 # Press Escape to close any menus first
                 log "  步骤 1: 关闭可能的菜单..."
-                xdotool key Escape
+                send_key_locked Escape
                 sleep 0.5
 
                 # Press Enter multiple times to confirm all dialogs/settlement screens
                 log "  步骤 2: 连续确认对话框..."
                 for i in 1 2 3 4 5; do
-                    xdotool key Return
+                    send_key_locked Return
                     sleep 1
                 done
 

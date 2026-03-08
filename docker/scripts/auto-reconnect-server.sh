@@ -7,14 +7,30 @@
 # 此脚本监控 SMAPI 日志中的 ServerOfflineMode
 # 检测到时自动重新启用 LAN 服务器。
 
-set -e
+# DO NOT use set -e for long-running background scripts
+# 长期运行的后台脚本不使用 set -e
 
 SMAPI_LOG="/home/steam/.config/StardewValley/ErrorLogs/SMAPI-latest.txt"
 CHECK_INTERVAL=60  # Check every 60 seconds
 OFFLINE_MARKER="[ServerOfflineMode]"
+LOCK_FILE="/tmp/stardew-key-lock"
+LOCK_TIMEOUT=10
 
 log() {
     echo -e "\033[0;36m[Auto-Reconnect]\033[0m $1"
+}
+
+# Send key with mutex lock
+send_key_locked() {
+    local key="$1"
+    (
+        if flock -w "$LOCK_TIMEOUT" 200; then
+            xdotool key "$key" 2>/dev/null
+        else
+            log "⚠️ 无法获取按键锁"
+            return 1
+        fi
+    ) 200>"$LOCK_FILE"
 }
 
 log "启动服务器自动重连监控服务..."
@@ -55,15 +71,15 @@ while true; do
 
                     # Close any open menus first
                     for i in 1 2 3; do
-                        xdotool key Escape
+                        send_key_locked Escape
                         sleep 0.2
                     done
                     sleep 1
 
                     # Press F9 twice to ensure server re-enables
-                    xdotool key F9
+                    send_key_locked F9
                     sleep 2
-                    xdotool key F9
+                    send_key_locked F9
 
                     log "  ✓ F9 按键已发送"
 

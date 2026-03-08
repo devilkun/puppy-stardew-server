@@ -7,9 +7,24 @@
 
 SMAPI_LOG="/home/steam/.config/StardewValley/ErrorLogs/SMAPI-latest.txt"
 CHECK_INTERVAL=3  # 每 3 秒检查一次
+LOCK_FILE="/tmp/stardew-key-lock"
+LOCK_TIMEOUT=10
 
 log() {
     echo -e "\033[0;35m[Auto-Handle-ReadyCheck]\033[0m $1"
+}
+
+# Send key with mutex lock
+send_key_locked() {
+    local key="$1"
+    (
+        if flock -w "$LOCK_TIMEOUT" 200; then
+            xdotool key "$key" 2>/dev/null
+        else
+            log "⚠️ 无法获取按键锁"
+            return 1
+        fi
+    ) 200>"$LOCK_FILE"
 }
 
 log "启动 ReadyCheckDialog 自动处理服务..."
@@ -47,11 +62,11 @@ while true; do
                 log "模拟按 Enter 键自动确认..."
 
                 # 连续按 3 次 Enter 确保确认成功
-                xdotool key Return
+                send_key_locked Return
                 sleep 0.5
-                xdotool key Return
+                send_key_locked Return
                 sleep 0.5
-                xdotool key Return
+                send_key_locked Return
 
                 log "✅ 已发送确认按键"
 
