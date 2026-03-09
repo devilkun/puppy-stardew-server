@@ -47,11 +47,33 @@ get_uptime_seconds() {
 
 get_player_count() {
     if [ -f "$SMAPI_LOG" ]; then
-        local connected=$(grep -c "player connected\|joined the game\|farmhand connected" "$SMAPI_LOG" 2>/dev/null || echo "0")
-        local disconnected=$(grep -c "player disconnected\|left the game\|farmhand disconnected" "$SMAPI_LOG" 2>/dev/null || echo "0")
-        local players=$((connected - disconnected))
-        [ $players -lt 0 ] && players=0
-        echo "$players"
+        awk '
+            function mark_join(id) {
+                if (id != "" && id != "Server" && id != "SMAPI") connected[id] = 1
+            }
+            function mark_leave(id) {
+                if (id != "") delete connected[id]
+            }
+            match($0, /Received connection for vanilla player ([A-Za-z0-9_]+)/, a) { mark_join(a[1]); next }
+            match($0, /Approved request for farmhand ([A-Za-z0-9_]+)/, a) { mark_join(a[1]); next }
+            match($0, /([A-Za-z0-9_]+) joined the game/, a) { mark_join(a[1]); next }
+            match($0, /farmhand ([A-Za-z0-9_]+) connected/, a) { mark_join(a[1]); next }
+            match($0, /client ([A-Za-z0-9_]+) connected/, a) { mark_join(a[1]); next }
+            match($0, /peer ([A-Za-z0-9_]+) joined/, a) { mark_join(a[1]); next }
+            match($0, /([A-Za-z0-9_]+) connected/, a) { mark_join(a[1]); next }
+            match($0, /([A-Za-z0-9_]+) left the game/, a) { mark_leave(a[1]); next }
+            match($0, /farmhand ([A-Za-z0-9_]+) disconnected/, a) { mark_leave(a[1]); next }
+            match($0, /client ([A-Za-z0-9_]+) disconnected/, a) { mark_leave(a[1]); next }
+            match($0, /peer ([A-Za-z0-9_]+) left/, a) { mark_leave(a[1]); next }
+            match($0, /connection ([A-Za-z0-9_]+) disconnected/, a) { mark_leave(a[1]); next }
+            match($0, /player ([A-Za-z0-9_]+) disconnected/, a) { mark_leave(a[1]); next }
+            match($0, /([A-Za-z0-9_]+) disconnected/, a) { mark_leave(a[1]); next }
+            END {
+                count = 0
+                for (id in connected) count++
+                print count
+            }
+        ' "$SMAPI_LOG" 2>/dev/null
     else
         echo "0"
     fi
@@ -59,10 +81,30 @@ get_player_count() {
 
 get_game_day() {
     if [ -f "$SMAPI_LOG" ]; then
-        local day_info=$(grep -oP "Day \d+ of \w+ Year \d+" "$SMAPI_LOG" 2>/dev/null | tail -1)
+        local day_info=""
+        day_info=$(grep -oP "starting \K[a-z]+ \d+ Y\d+" "$SMAPI_LOG" 2>/dev/null | tail -1 || true)
+        if [ -z "$day_info" ]; then
+            day_info=$(grep -oP "Season:\s*\K[a-z]+, Day \d+, Year \d+" "$SMAPI_LOG" 2>/dev/null | tail -1 || true)
+        fi
         echo "${day_info:-Unknown}"
     else
         echo "Not started"
+    fi
+}
+
+get_game_paused() {
+    if [ ! -f "$SMAPI_LOG" ]; then
+        echo "0"
+        return
+    fi
+
+    local latest_state
+    latest_state=$(grep -nE "Disconnected: ServerOfflineMode|Starting LAN server|joined the game|player connected|farmhand connected|peer .* joined|client .* connected" "$SMAPI_LOG" 2>/dev/null | tail -1 || true)
+
+    if echo "$latest_state" | grep -q "Disconnected: ServerOfflineMode"; then
+        echo "1"
+    else
+        echo "0"
     fi
 }
 
@@ -117,6 +159,7 @@ update_metrics() {
     local uptime=$(get_uptime_seconds)
     local players=$(get_player_count)
     local game_day=$(get_game_day)
+    local game_paused=$(get_game_paused)
     local memory=$(get_memory_usage_mb)
     local cpu=$(get_cpu_usage)
     local events=($(get_event_counts))
@@ -179,7 +222,8 @@ EOPROM
   },
   "game": {
     "day": "$game_day",
-    "players_online": $players
+    "players_online": $players,
+    "paused": $([ "$game_paused" = "1" ] && echo "true" || echo "false")
   },
   "resources": {
     "memory_mb": $memory,

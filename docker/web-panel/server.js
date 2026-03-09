@@ -68,7 +68,10 @@ app.get('/api/players', auth.verifyMiddleware, playersAPI.getPlayers);
 const savesAPI = require('./api/saves');
 app.get('/api/saves', auth.verifyMiddleware, savesAPI.getSaves);
 app.get('/api/saves/backups', auth.verifyMiddleware, savesAPI.getBackups);
+app.get('/api/saves/backup/status', auth.verifyMiddleware, savesAPI.getBackupStatus);
 app.post('/api/saves/backup', auth.verifyMiddleware, savesAPI.createBackup);
+app.post('/api/saves/upload', auth.verifyMiddleware, savesAPI.uploadSave);
+app.post('/api/saves/default', auth.verifyMiddleware, savesAPI.setDefaultSave);
 app.get('/api/saves/download/:filename', auth.verifyMiddleware, savesAPI.downloadBackup);
 
 // Config API

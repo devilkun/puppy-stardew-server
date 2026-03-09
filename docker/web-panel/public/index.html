@@ -384,11 +384,12 @@
                 <svg class="icon"><use href="#icon-refresh"></use></svg>
                 <span data-i18n="dash.restart">Restart Server</span>
               </button>
-              <button class="btn btn-success" type="button" onclick="createBackup()">
+              <button class="btn btn-success backup-action-btn" type="button" onclick="createBackup()" data-backup-label-key="dash.backup">
                 <svg class="icon"><use href="#icon-saves"></use></svg>
                 <span data-i18n="dash.backup">Backup Now</span>
               </button>
             </div>
+            <div id="dashboardBackupStatus" class="backup-status" style="display:none"></div>
           </div>
         </section>
 
@@ -453,11 +454,27 @@
           <div class="card">
             <div class="section-header">
               <h3 data-i18n="saves.title">Save Files</h3>
-              <button class="btn btn-success btn-sm" type="button" onclick="createBackup()">
-                <svg class="icon"><use href="#icon-saves"></use></svg>
-                <span data-i18n="saves.backupNow">Backup Now</span>
-              </button>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <button class="btn btn-primary btn-sm" type="button" onclick="document.getElementById('saveFileInput').click()">
+                  <svg class="icon"><use href="#icon-package"></use></svg>
+                  <span data-i18n="saves.upload">Upload Save</span>
+                </button>
+                <button class="btn btn-success btn-sm backup-action-btn" type="button" onclick="createBackup()" data-backup-label-key="saves.backupNow">
+                  <svg class="icon"><use href="#icon-saves"></use></svg>
+                  <span data-i18n="saves.backupNow">Backup Now</span>
+                </button>
+              </div>
             </div>
+            <div class="save-upload-panel">
+              <input type="file" id="saveFileInput" accept=".zip" style="display:none" onchange="handleSaveUpload(this)">
+              <label class="save-upload-option">
+                <input type="checkbox" id="saveUploadSetDefault" checked>
+                <span data-i18n="saves.setDefaultAfterUpload">Set imported save as default</span>
+              </label>
+              <div class="save-upload-hint" data-i18n="saves.uploadHint">Upload a Stardew Valley save zip. The panel will validate it, extract it, and you can restart the container to auto-load it.</div>
+              <div id="saveUploadStatus" class="save-upload-status"></div>
+            </div>
+            <div id="savesBackupStatus" class="backup-status" style="display:none"></div>
             <div id="savesList" class="saves-list">
               <div class="empty-state" data-i18n="players.loading">Loading...</div>
             </div>

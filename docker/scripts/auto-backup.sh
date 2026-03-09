@@ -9,6 +9,7 @@ SAVE_DIR="/home/steam/.config/StardewValley"
 BACKUP_DIR="/home/steam/.local/share/puppy-stardew/backups"
 MAX_BACKUPS=${MAX_BACKUPS:-7}          # Keep last 7 backups
 BACKUP_HOUR=${BACKUP_HOUR:-4}          # Backup at 4 AM server time
+BACKUP_COMPRESSION_LEVEL=${BACKUP_COMPRESSION_LEVEL:-1}  # gzip level 1-9
 CHECK_INTERVAL=300                      # Check every 5 minutes
 
 GREEN='\033[0;32m'
@@ -25,6 +26,7 @@ log "========================================"
 log "  Backup directory / 备份目录: $BACKUP_DIR"
 log "  Max backups / 最大备份数: $MAX_BACKUPS"
 log "  Backup hour / 备份时间: ${BACKUP_HOUR}:00"
+log "  Compression level / 压缩级别: $BACKUP_COMPRESSION_LEVEL"
 log ""
 
 # Create backup directory
@@ -52,7 +54,7 @@ do_backup() {
     log "  存档文件数: $file_count"
 
     # Create compressed backup
-    tar -czf "$backup_file" -C "$(dirname "$SAVE_DIR")" "$(basename "$SAVE_DIR")" 2>/dev/null
+    tar -I "gzip -${BACKUP_COMPRESSION_LEVEL}" -cf "$backup_file" -C "$(dirname "$SAVE_DIR")" "$(basename "$SAVE_DIR")" 2>/dev/null
     if [ $? -ne 0 ]; then
         log "❌ 备份失败"
         rm -f "$backup_file" 2>/dev/null

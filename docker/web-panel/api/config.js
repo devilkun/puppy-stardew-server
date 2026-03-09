@@ -30,6 +30,7 @@ const CONFIG_SCHEMA = {
     { key: 'ENABLE_AUTO_BACKUP', label: 'Auto Backup', type: 'boolean', default: 'false' },
     { key: 'MAX_BACKUPS', label: 'Max Backups', type: 'number', default: '7' },
     { key: 'BACKUP_HOUR', label: 'Backup Hour (0-23)', type: 'number', default: '4', min: 0, max: 23 },
+    { key: 'BACKUP_COMPRESSION_LEVEL', label: 'Backup Compression Level', type: 'number', default: '1', min: 1, max: 9, descriptionKey: 'config.help.BACKUP_COMPRESSION_LEVEL' },
   ],
   'Stability': [
     { key: 'ENABLE_CRASH_RESTART', label: 'Auto Crash Restart', type: 'boolean', default: 'false' },
@@ -40,13 +41,60 @@ const CONFIG_SCHEMA = {
     { key: 'METRICS_PORT', label: 'Metrics Port', type: 'number', default: '9090' },
   ],
   'Game': [
-    { key: 'SAVE_NAME', label: 'Save Name', type: 'text', default: '' },
+    { key: 'SAVE_NAME', label: 'Save Name', type: 'text', default: '', descriptionKey: 'config.help.SAVE_NAME' },
     { key: 'PUBLIC_IP', label: 'Public Join IP', type: 'text', default: '', descriptionKey: 'config.help.PUBLIC_IP' },
   ],
   'Other': [
     { key: 'TZ', label: 'Timezone', type: 'text', default: 'UTC' },
   ],
 };
+
+function detectCurrentSaveName() {
+  try {
+    const markerPath = path.join(config.SAVES_DIR, '.selected_save');
+    if (fs.existsSync(markerPath)) {
+      const selected = fs.readFileSync(markerPath, 'utf-8').trim();
+      if (selected && fs.existsSync(path.join(config.SAVES_DIR, selected))) {
+        return selected;
+      }
+    }
+
+    if (!fs.existsSync(config.SAVES_DIR)) {
+      return '';
+    }
+
+    const candidates = fs.readdirSync(config.SAVES_DIR, { withFileTypes: true })
+      .filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
+      .map(entry => {
+        const saveDir = path.join(config.SAVES_DIR, entry.name);
+        let mtimeMs = 0;
+        try {
+          mtimeMs = fs.statSync(saveDir).mtimeMs;
+        } catch (error) {}
+        return { name: entry.name, mtimeMs };
+      })
+      .sort((a, b) => b.mtimeMs - a.mtimeMs);
+
+    return candidates.length > 0 ? candidates[0].name : '';
+  } catch (error) {
+    return '';
+  }
+}
+
+function listAvailableSaves() {
+  try {
+    if (!fs.existsSync(config.SAVES_DIR)) {
+      return [];
+    }
+
+    return fs.readdirSync(config.SAVES_DIR, { withFileTypes: true })
+      .filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
+      .map(entry => entry.name)
+      .sort((a, b) => a.localeCompare(b));
+  } catch (error) {
+    return [];
+  }
+}
 
 function parseEnvFile() {
   const envPath = findEnvFile();
@@ -137,11 +185,25 @@ function writeEnvFile(envData) {
 function getConfig(req, res) {
   const env = parseEnvFile();
   const groups = [];
+  const detectedSaveName = detectCurrentSaveName();
+  const availableSaves = listAvailableSaves();
 
   for (const [groupName, fields] of Object.entries(CONFIG_SCHEMA)) {
     const items = fields.map(field => {
       // Try .env file first, then process.env, then default
       let value = env[field.key] || process.env[field.key] || field.default || '';
+
+      if (!value && field.key === 'SAVE_NAME') {
+        value = detectedSaveName;
+      }
+
+      let options;
+      if (field.key === 'SAVE_NAME' && availableSaves.length > 0) {
+        options = [''].concat(availableSaves);
+        if (value && options.indexOf(value) === -1) {
+          options.push(value);
+        }
+      }
 
       // Mask sensitive fields (e.g. STEAM_PASSWORD) but NOT viewable fields (e.g. VNC_PASSWORD)
       if (field.sensitive && !field.viewable && value) {
@@ -152,6 +214,7 @@ function getConfig(req, res) {
         ...field,
         value: (field.sensitive && !field.viewable) ? undefined : value,
         hasValue: !!(env[field.key] || process.env[field.key]),
+        options,
       };
     });
 

@@ -1,5 +1,6 @@
 # Environment variables with sensitive data
 .env
+CODEX-PROMPTS.md
 
 # Data directories
 data/

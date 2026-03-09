@@ -17,7 +17,8 @@ services:
   # Init container: fixes permissions before main server starts
   # 初始化容器：在主服务器启动前修复权限
   stardew-init:
-    image: truemanlive/puppy-stardew-server:v1.0.72
+    build: ./docker
+    image: puppy-stardew-server:local
     container_name: puppy-stardew-init
     user: root
     entrypoint: ["/home/steam/scripts/init-container.sh"]
@@ -29,9 +30,11 @@ services:
       - ./data/steam:/home/steam/Steam:rw
       - ./data/logs:/home/steam/.local/share/puppy-stardew/logs:rw
       - ./data/backups:/home/steam/.local/share/puppy-stardew/backups:rw
+      - ./data/panel:/home/steam/web-panel/data:rw
 
   stardew-server:
-    image: truemanlive/puppy-stardew-server:v1.0.72
+    build: ./docker
+    image: puppy-stardew-server:local
     container_name: puppy-stardew
     restart: unless-stopped  # Keep running after Steam Guard
     depends_on:
@@ -83,6 +86,7 @@ services:
       - ENABLE_AUTO_BACKUP=${ENABLE_AUTO_BACKUP:-false}
       - MAX_BACKUPS=${MAX_BACKUPS:-7}
       - BACKUP_HOUR=${BACKUP_HOUR:-4}
+      - BACKUP_COMPRESSION_LEVEL=${BACKUP_COMPRESSION_LEVEL:-1}
 
       # Crash auto-restart - OPTIONAL (default: disabled)
       # 崩溃自动重启 - 可选（默认：禁用）
@@ -130,6 +134,7 @@ services:
       - ./data/steam:/home/steam/Steam:rw
       - ./data/logs:/home/steam/.local/share/puppy-stardew/logs:rw
       - ./data/backups:/home/steam/.local/share/puppy-stardew/backups:rw
+      - ./data/panel:/home/steam/web-panel/data:rw
       # Custom mods volume (OPTIONAL - place your mods here)
       # 自定义模组卷（可选 - 将您的模组放在这里）
       # Supports: mod directories or .zip files

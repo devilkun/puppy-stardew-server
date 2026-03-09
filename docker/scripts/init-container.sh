@@ -28,6 +28,7 @@ DIRS=(
     "/home/steam/.config/StardewValley/ErrorLogs"
     "/home/steam/stardewvalley"
     "/home/steam/Steam"
+    "/home/steam/web-panel/data"
     "/home/steam/.local/share/puppy-stardew"
     "/home/steam/.local/share/puppy-stardew/logs"
     "/home/steam/.local/share/puppy-stardew/backups"

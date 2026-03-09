@@ -247,7 +247,7 @@ setup_directories() {
     print_step "步骤 4: 设置数据目录..."
 
     # 创建目录（包括日志监控需要的 logs 目录）
-    mkdir -p data/{saves,game,steam,logs,backups,custom-mods}
+    mkdir -p data/{saves,game,steam,logs,backups,custom-mods,panel}
 
     print_info "设置正确的权限 (UID 1000)..."
     if chown -R 1000:1000 data/ 2>/dev/null; then

@@ -27,6 +27,8 @@ let currentPage = 'dashboard';
 let logAutoScroll = true;
 let statusInterval = null;
 let lastStatusData = null;
+let backupStatusPoll = null;
+let lastBackupStatus = null;
 
 function detectTheme() {
   const saved = localStorage.getItem('panel_theme');
@@ -66,6 +68,7 @@ const translations = {
     'dash.passout': '昏倒处理', 'dash.readyCheck': '准备检查', 'dash.offlineEvents': '离线恢复',
     'dash.joinHint': '游戏内通常只需要输入 IP 地址。', 'dash.portHint': '星露谷联机输入框里不要追加端口号。',
     'dash.healthy': '正常', 'dash.unhealthy': '异常',
+    'dash.paused': '暂停游戏',
     'dash.viewLogs': '查看日志', 'dash.restart': '重启服务器', 'dash.backup': '立即备份',
     'term.title': 'SMAPI 控制台（非系统终端）', 'term.hint': '点击“连接”后会附着到正在运行的 SMAPI 进程。这里只能输入 SMAPI 命令或 Steam Guard 验证码，不能执行 Linux 命令。',
     'term.connect': '连接', 'term.disconnect': '断开', 'term.send': '发送', 'term.input': '输入 SMAPI 命令或 Steam Guard 验证码...',
@@ -73,6 +76,18 @@ const translations = {
     'players.none': '当前没有在线玩家', 'players.online': '在线：{online}/{max}', 'players.farm': '农场：{farm}',
     'saves.title': '存档文件', 'saves.backups': '备份列表', 'saves.noFiles': '未找到存档文件', 'saves.noBackups': '未找到备份',
     'saves.backupNow': '立即备份', 'saves.unknown': '未知',
+    'saves.upload': '上传存档', 'saves.uploading': '上传中...', 'saves.uploadHint': '上传星露谷存档 zip。面板会校验并解压到服务器存档目录，重启容器后可自动加载。',
+    'saves.setDefaultAfterUpload': '上传后设为默认存档', 'saves.setDefault': '设为默认', 'saves.defaultBadge': '默认自动载入',
+    'saves.restartHint': '重启 Docker 容器后生效。', 'saves.overwriteBackup': '已为同名旧存档创建备份：{name}',
+    'saves.multipleImported': '压缩包包含多个存档，已导入但未自动设置默认存档。',
+    'saves.backupRunning': '备份进行中，请勿重复点击或反复刷新页面。',
+    'saves.backupCompleted': '最近一次备份已完成。',
+    'saves.backupFailed': '最近一次备份失败。',
+    'saves.backupProgress': '进度 {current}/{total} · {percent}%',
+    'saves.backupStartedAt': '开始于 {time}',
+    'saves.backupCompletedAt': '完成于 {time}',
+    'saves.backupFile': '文件 {name}',
+    'saves.backupSize': '大小 {size}',
     'config.password': '修改面板密码', 'config.currentPassword': '当前密码', 'config.newPassword': '新密码',
     'config.update': '更新', 'config.saveChanges': '保存更改', 'mods.title': '已安装模组', 'mods.none': '未找到模组',
     'mods.custom': '自定义', 'mods.builtin': '内置',
@@ -88,7 +103,10 @@ const translations = {
     'config.group.Display': '显示设置', 'config.group.Performance': '性能优化',
     'config.group.Backup': '备份设置', 'config.group.Stability': '稳定性',
     'config.group.Monitoring': '监控', 'config.group.Game': '游戏', 'config.group.Other': '其他',
-    'config.help.PUBLIC_IP': '公网联机时填你的公网 IP 或域名。留空时仪表盘会显示容器当前检测到的内网 IP。',
+    'config.autoDetect': '自动检测',
+    'config.help.SAVE_NAME': '选择要自动加载的现有存档。留空时将使用默认存档加载逻辑。',
+    'config.help.BACKUP_COMPRESSION_LEVEL': 'gzip 压缩级别，范围 1-9。1 占用 CPU 最低、备份更快，但文件会更大。',
+    'config.help.PUBLIC_IP': '公网联机时填写你的公网 IP 或域名。留空时仪表盘会显示当前访问面板所用的地址，或容器检测到的内网 IP。',
     'login.subtitle': '服务器管理面板', 'login.password': '密码', 'login.button': '登录',
     'setup.title': '设置管理密码', 'setup.subtitle': '首次使用，请设置您的管理密码',
     'setup.password': '设置密码', 'setup.confirm': '确认密码', 'setup.button': '开始使用',
@@ -99,13 +117,16 @@ const translations = {
     'logs.search': '搜索日志...', 'logs.auto': '自动', 'logs.clear': '清空',
     'logs.notFound': '日志文件尚未生成，服务器可能仍在启动中...',
     'toast.backupOk': '备份创建成功！', 'toast.backupFail': '备份失败',
+    'toast.saveUploadOk': '存档上传成功。', 'toast.saveUploadDefaultOk': '存档上传成功，已设为默认自动载入存档。', 'toast.saveUploadFail': '存档上传失败',
+    'toast.saveDefaultOk': '默认存档已更新。', 'toast.saveDefaultFail': '设置默认存档失败',
+    'toast.backupStarted': '备份任务已在后台开始，可以离开当前页面。',
+    'toast.backupRunning': '已有备份任务正在进行中。',
     'toast.restartOk': '重启指令已发送', 'toast.restartFail': '重启失败',
     'toast.pwdOk': '密码修改成功', 'toast.pwdFail': '密码修改失败',
-    'toast.configOk': '配置已保存，重启后生效', 'toast.configFail': '配置保存失败',
+    'toast.configOk': '配置已保存，重启 Docker 容器后生效', 'toast.configFail': '配置保存失败',
     'toast.creatingBackup': '正在创建备份...', 'toast.passwordFields': '请填写两个密码字段',
     'actions.confirmRestart': '确定要重启服务器吗？',
-    'config.restartTitle': '需要重启', 'config.restartMessage': '配置已保存。重启服务器后更改将生效。',
-    'config.restartNow': '立即重启', 'config.restartLater': '稍后',
+    'config.restartTitle': '需要重启容器', 'config.restartMessage': '配置已保存。请重启 Docker 容器或服务后再应用这些更改；这里的“重启服务器”按钮只会重启游戏进程。', 'config.restartNow': '我知道了', 'config.restartLater': '关闭',
     'config.showPassword': '显示密码', 'config.hidePassword': '隐藏密码',
     'lang.toggle': '切换语言', 'logout.title': '退出登录',
     'theme.light': '切换到亮色模式', 'theme.dark': '切换到暗色模式',
@@ -122,6 +143,7 @@ const translations = {
     'dash.passout': 'Passout', 'dash.readyCheck': 'Ready Check', 'dash.offlineEvents': 'Offline Recovery',
     'dash.joinHint': 'In-game usually only needs the IP address.', 'dash.portHint': 'Do not append the port in Stardew\'s join field.',
     'dash.healthy': 'Healthy', 'dash.unhealthy': 'Unhealthy',
+    'dash.paused': 'Paused',
     'dash.viewLogs': 'View Logs', 'dash.restart': 'Restart Server', 'dash.backup': 'Backup Now',
     'term.title': 'SMAPI Console (Not a System Shell)', 'term.hint': 'Click "Connect" to attach to the running SMAPI process. This accepts SMAPI commands and Steam Guard codes, not Linux shell commands.',
     'term.connect': 'Connect', 'term.disconnect': 'Disconnect', 'term.send': 'Send', 'term.input': 'Type a SMAPI command or Steam Guard code...',
@@ -129,6 +151,18 @@ const translations = {
     'players.none': 'No players online', 'players.online': 'Online: {online}/{max}', 'players.farm': 'Farm: {farm}',
     'saves.title': 'Save Files', 'saves.backups': 'Backups', 'saves.noFiles': 'No save files found', 'saves.noBackups': 'No backups found',
     'saves.backupNow': 'Backup Now', 'saves.unknown': 'unknown',
+    'saves.upload': 'Upload Save', 'saves.uploading': 'Uploading...', 'saves.uploadHint': 'Upload a Stardew Valley save zip. The panel will validate it, extract it into the server save directory, and it can auto-load after a container restart.',
+    'saves.setDefaultAfterUpload': 'Set imported save as default', 'saves.setDefault': 'Set Default', 'saves.defaultBadge': 'Auto-load Default',
+    'saves.restartHint': 'Takes effect after restarting the Docker container.', 'saves.overwriteBackup': 'Created a backup for overwritten saves: {name}',
+    'saves.multipleImported': 'The archive contained multiple saves, so the default save was not changed automatically.',
+    'saves.backupRunning': 'Backup is in progress. Avoid repeated clicks or refreshes.',
+    'saves.backupCompleted': 'The latest backup completed successfully.',
+    'saves.backupFailed': 'The latest backup failed.',
+    'saves.backupProgress': 'Progress {current}/{total} · {percent}%',
+    'saves.backupStartedAt': 'Started at {time}',
+    'saves.backupCompletedAt': 'Completed at {time}',
+    'saves.backupFile': 'File {name}',
+    'saves.backupSize': 'Size {size}',
     'config.password': 'Change Panel Password', 'config.currentPassword': 'Current password', 'config.newPassword': 'New password',
     'config.update': 'Update', 'config.saveChanges': 'Save Changes', 'mods.title': 'Installed Mods', 'mods.none': 'No mods found',
     'mods.custom': 'Custom', 'mods.builtin': 'Built-in',
@@ -144,7 +178,10 @@ const translations = {
     'config.group.Display': 'Display', 'config.group.Performance': 'Performance',
     'config.group.Backup': 'Backup', 'config.group.Stability': 'Stability',
     'config.group.Monitoring': 'Monitoring', 'config.group.Game': 'Game', 'config.group.Other': 'Other',
-    'config.help.PUBLIC_IP': 'Enter your public IP or domain for internet play. Leave it empty to show the container-detected LAN IP instead.',
+    'config.autoDetect': 'Auto-detect',
+    'config.help.SAVE_NAME': 'Choose an existing save to auto-load. Leave it empty to use the default save loading behavior.',
+    'config.help.BACKUP_COMPRESSION_LEVEL': 'gzip compression level from 1 to 9. Level 1 uses the least CPU and finishes faster, but creates larger backups.',
+    'config.help.PUBLIC_IP': 'Enter your public IP or domain for internet play. Leave it empty to show the current panel host or the container-detected LAN IP instead.',
     'login.subtitle': 'Server Management Panel', 'login.password': 'Password', 'login.button': 'Login',
     'setup.title': 'Set Admin Password', 'setup.subtitle': 'First time setup - please create your admin password',
     'setup.password': 'Password', 'setup.confirm': 'Confirm Password', 'setup.button': 'Get Started',
@@ -155,13 +192,16 @@ const translations = {
     'logs.search': 'Search logs...', 'logs.auto': 'Auto', 'logs.clear': 'Clear',
     'logs.notFound': 'Log file not found yet. Server may still be starting...',
     'toast.backupOk': 'Backup created!', 'toast.backupFail': 'Backup failed',
+    'toast.saveUploadOk': 'Save uploaded.', 'toast.saveUploadDefaultOk': 'Save uploaded and set as the default auto-load save.', 'toast.saveUploadFail': 'Save upload failed',
+    'toast.saveDefaultOk': 'Default save updated.', 'toast.saveDefaultFail': 'Failed to set default save',
+    'toast.backupStarted': 'Backup started in the background. You can leave this page.',
+    'toast.backupRunning': 'A backup is already in progress.',
     'toast.restartOk': 'Restart initiated', 'toast.restartFail': 'Restart failed',
     'toast.pwdOk': 'Password changed', 'toast.pwdFail': 'Password change failed',
-    'toast.configOk': 'Config saved. Restart to apply.', 'toast.configFail': 'Failed to save config',
+    'toast.configOk': 'Config saved. Restart the Docker container to apply.', 'toast.configFail': 'Failed to save config',
     'toast.creatingBackup': 'Creating backup...', 'toast.passwordFields': 'Please fill in both password fields',
     'actions.confirmRestart': 'Are you sure you want to restart the server?',
-    'config.restartTitle': 'Restart Required', 'config.restartMessage': 'Configuration has been saved. Restart the server for changes to take effect.',
-    'config.restartNow': 'Restart Now', 'config.restartLater': 'Later',
+    'config.restartTitle': 'Container Restart Required', 'config.restartMessage': 'Configuration has been saved. Restart the Docker container or service to apply these changes; the dashboard restart button only restarts the game process.', 'config.restartNow': 'Understood', 'config.restartLater': 'Close',
     'config.showPassword': 'Show password', 'config.hidePassword': 'Hide password',
     'lang.toggle': 'Switch language', 'logout.title': 'Log out',
     'theme.light': 'Switch to light mode', 'theme.dark': 'Switch to dark mode',
@@ -226,6 +266,9 @@ function applyTranslations() {
   if (lastStatusData) {
     updateDashboardUI(lastStatusData);
   }
+  if (lastBackupStatus) {
+    renderBackupStatus(lastBackupStatus);
+  }
 }
 
 // ─── Init ────────────────────────────────────────────────────────
@@ -235,6 +278,7 @@ function init() {
   setupNavigation();
   setupWebSocket();
   loadDashboard();
+  loadBackupStatus();
 
   // Logout
   document.getElementById('logoutBtn').onclick = () => {
@@ -478,7 +522,7 @@ function updateDashboardUI(data) {
   document.getElementById('stat-uptime').textContent = formatUptime(data.uptime || 0);
 
   // Game day
-  document.getElementById('stat-day').textContent = data.day || '--';
+  document.getElementById('stat-day').textContent = data.paused ? t('dash.paused') : (data.day || '--');
 
   // Backups & Mods
   document.getElementById('stat-backups').textContent = data.backupCount || 0;
@@ -636,11 +680,20 @@ async function loadSaves() {
       list.innerHTML = savesData.saves.map(s => `
         <div class="save-item">
           <div class="save-info">
-            <div class="save-name">${icon('sprout', 'icon save-name-icon')}<span>${escapeHtml(s.farm || s.name)}</span></div>
+            <div class="save-name">${icon('sprout', 'icon save-name-icon')}<span>${escapeHtml(s.farm || s.name)}</span>${s.isDefault ? `<span class="save-badge">${t('saves.defaultBadge')}</span>` : ''}</div>
             <div class="save-meta">${formatSize(s.size)} · ${s.lastModified ? new Date(s.lastModified).toLocaleString(currentLang === 'zh' ? 'zh-CN' : 'en-US') : t('saves.unknown')}</div>
+          </div>
+          <div class="save-actions">
+            ${s.isDefault ? '' : `<button class="btn btn-sm save-default-btn" data-save-name="${escapeHtml(s.name)}">${t('saves.setDefault')}</button>`}
           </div>
         </div>
       `).join('');
+
+      list.querySelectorAll('.save-default-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          setDefaultSave(btn.dataset.saveName);
+        });
+      });
     }
   }
 
@@ -661,6 +714,213 @@ async function loadSaves() {
       `).join('');
     }
   }
+}
+
+function getSaveUploadToast(data) {
+  var parts = [];
+
+  if (data && data.defaultApplied) {
+    parts.push(t('toast.saveUploadDefaultOk'));
+  } else if (data && data.defaultSkipped) {
+    parts.push(t('saves.multipleImported'));
+  } else {
+    parts.push(t('toast.saveUploadOk'));
+  }
+
+  if (data && data.overwriteBackup) {
+    parts.push(tf('saves.overwriteBackup', { name: data.overwriteBackup }));
+  }
+
+  parts.push(t('saves.restartHint'));
+  return parts.join(' ');
+}
+
+async function handleSaveUpload(input) {
+  if (!input.files || !input.files[0]) return;
+  var file = input.files[0];
+
+  if (!file.name.endsWith('.zip')) {
+    showToast('Only .zip files are supported', 'error');
+    return;
+  }
+
+  if (file.size > 40 * 1024 * 1024) {
+    showToast('File too large (max 40MB)', 'error');
+    return;
+  }
+
+  var setAsDefault = document.getElementById('saveUploadSetDefault').checked;
+  document.getElementById('saveUploadStatus').textContent = t('saves.uploading');
+
+  var reader = new FileReader();
+  reader.onload = async function() {
+    var base64 = reader.result.split(',')[1];
+    var data = await API.post('/api/saves/upload', {
+      filename: file.name,
+      data: base64,
+      setAsDefault: setAsDefault,
+    });
+
+    document.getElementById('saveUploadStatus').textContent = '';
+    input.value = '';
+
+    if (data && data.success) {
+      showToast(getSaveUploadToast(data), 'success');
+      loadSaves();
+      loadConfig();
+    } else {
+      showToast(((data && data.error) || t('toast.saveUploadFail')) + ((data && data.details) ? (': ' + data.details) : ''), 'error');
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+async function setDefaultSave(saveName) {
+  var data = await API.post('/api/saves/default', { saveName: saveName });
+  if (data && data.success) {
+    showToast(t('toast.saveDefaultOk') + ' ' + t('saves.restartHint'), 'success');
+    loadSaves();
+    loadConfig();
+  } else {
+    showToast(((data && data.error) || t('toast.saveDefaultFail')) + ((data && data.details) ? (': ' + data.details) : ''), 'error');
+  }
+}
+
+function getBackupActionButtons() {
+  return document.querySelectorAll('.backup-action-btn');
+}
+
+function formatBackupTimestamp(value) {
+  if (!value) return '';
+  return new Date(value).toLocaleString(currentLang === 'zh' ? 'zh-CN' : 'en-US');
+}
+
+function setBackupButtonsDisabled(disabled) {
+  getBackupActionButtons().forEach(function(btn) {
+    btn.disabled = disabled;
+  });
+}
+
+function buildBackupStatusMeta(status) {
+  const meta = [];
+
+  if (status.state === 'running' && status.totalEntries > 0) {
+    meta.push(tf('saves.backupProgress', {
+      current: String(status.processedEntries || 0),
+      total: String(status.totalEntries || 0),
+      percent: String(status.progress || 0),
+    }));
+  }
+
+  if (status.startedAt) {
+    meta.push(tf('saves.backupStartedAt', { time: formatBackupTimestamp(status.startedAt) }));
+  }
+
+  if (status.completedAt) {
+    meta.push(tf('saves.backupCompletedAt', { time: formatBackupTimestamp(status.completedAt) }));
+  }
+
+  if (status.backupName) {
+    meta.push(tf('saves.backupFile', { name: status.backupName }));
+  }
+
+  if (status.state === 'completed' && status.size) {
+    meta.push(tf('saves.backupSize', { size: formatSize(status.size) }));
+  }
+
+  return meta;
+}
+
+function renderBackupStatus(status) {
+  lastBackupStatus = status;
+
+  const targets = [
+    document.getElementById('dashboardBackupStatus'),
+    document.getElementById('savesBackupStatus'),
+  ];
+  const active = status && status.state && status.state !== 'idle';
+
+  setBackupButtonsDisabled(!!(status && status.state === 'running'));
+
+  targets.forEach(function(el) {
+    if (!el) return;
+
+    if (!active) {
+      el.style.display = 'none';
+      el.innerHTML = '';
+      return;
+    }
+
+    const tone = status.state === 'failed'
+      ? 'error'
+      : (status.state === 'completed' ? 'success' : 'running');
+    const titleKey = status.state === 'failed'
+      ? 'saves.backupFailed'
+      : (status.state === 'completed' ? 'saves.backupCompleted' : 'saves.backupRunning');
+    const meta = buildBackupStatusMeta(status);
+    const errorText = status.state === 'failed' && status.error
+      ? '<div class="backup-status-error">' + escapeHtml(status.error) + '</div>'
+      : '';
+    const progressHtml = status.state === 'running'
+      ? '<div class="backup-progress"><div class="backup-progress-fill" style="width:' + Math.max(1, status.progress || 0) + '%"></div></div>'
+      : '';
+
+    el.className = 'backup-status ' + tone;
+    el.style.display = '';
+    el.innerHTML =
+      '<div class="backup-status-title">' + escapeHtml(t(titleKey)) + '</div>' +
+      progressHtml +
+      (meta.length > 0 ? '<div class="backup-status-meta">' + escapeHtml(meta.join(' · ')) + '</div>' : '') +
+      errorText;
+  });
+}
+
+function stopBackupStatusPolling() {
+  if (backupStatusPoll) {
+    clearInterval(backupStatusPoll);
+    backupStatusPoll = null;
+  }
+}
+
+function startBackupStatusPolling() {
+  if (backupStatusPoll) {
+    return;
+  }
+
+  backupStatusPoll = setInterval(function() {
+    loadBackupStatus(true);
+  }, 2000);
+}
+
+function applyBackupStatus(status, silent) {
+  const previousState = lastBackupStatus && lastBackupStatus.state;
+  renderBackupStatus(status);
+
+  if (status && status.state === 'running') {
+    startBackupStatusPolling();
+    return;
+  }
+
+  stopBackupStatusPolling();
+
+  if (!silent && previousState === 'running' && status && status.state === 'completed') {
+    showToast(t('toast.backupOk'), 'success');
+  } else if (!silent && previousState === 'running' && status && status.state === 'failed') {
+    showToast(status.error || t('toast.backupFail'), 'error');
+  }
+
+  if (status && status.state && status.state !== 'running') {
+    loadDashboard();
+    if (currentPage === 'saves') {
+      loadSaves();
+    }
+  }
+}
+
+async function loadBackupStatus(silent) {
+  const data = await API.get('/api/saves/backup/status');
+  if (!data) return;
+  applyBackupStatus(data, !!silent);
 }
 
 // ─── Config ──────────────────────────────────────────────────────
@@ -690,6 +950,14 @@ async function loadConfig() {
           '<input type="checkbox" data-key="' + item.key + '" ' + checked + ' onchange="configChanged()">' +
           '<span class="toggle-slider"></span>' +
         '</label>';
+      } else if (item.options && item.options.length > 0) {
+        valueHtml = '<select class="input" data-key="' + item.key + '" style="width:220px" onchange="configChanged()">' +
+          item.options.map(function(option) {
+            var selected = option === (item.value || '') ? ' selected' : '';
+            var label = option === '' ? t('config.autoDetect') : option;
+            return '<option value="' + escapeHtml(option) + '"' + selected + '>' + escapeHtml(label) + '</option>';
+          }).join('') +
+          '</select>';
       } else if (item.viewable) {
         // Viewable password field (e.g. VNC_PASSWORD) - show real value with toggle
         valueHtml = '<div class="password-wrapper">' +
@@ -785,6 +1053,7 @@ function showRestartModal() {
   message.textContent = t('config.restartMessage');
   laterBtn.textContent = t('config.restartLater');
   restartBtn.textContent = t('config.restartNow');
+  restartBtn.style.display = 'none';
 
   modal.style.display = '';
 
@@ -800,13 +1069,7 @@ function closeRestartModal() {
 }
 
 async function confirmRestart() {
-  document.getElementById('restartModal').style.display = 'none';
-  const data = await API.post('/api/server/restart');
-  if (data && data.success) {
-    showToast(t('toast.restartOk'), 'success');
-  } else {
-    showToast((data && data.error) || t('toast.restartFail'), 'error');
-  }
+  closeRestartModal();
 }
 
 // ─── Mods ────────────────────────────────────────────────────────
@@ -943,11 +1206,20 @@ async function restartServer() {
 }
 
 async function createBackup() {
-  showToast(t('toast.creatingBackup'), 'warn');
+  if (lastBackupStatus && lastBackupStatus.state === 'running') {
+    showToast(t('toast.backupRunning'), 'warn');
+    startBackupStatusPolling();
+    return;
+  }
+
+  showToast(t('toast.backupStarted'), 'warn');
   const data = await API.post('/api/saves/backup');
-  if (data && data.success) {
-    showToast(t('toast.backupOk'), 'success');
-    if (currentPage === 'saves') loadSaves();
+  if (data && data.success && data.status) {
+    applyBackupStatus(data.status, true);
+    startBackupStatusPolling();
+    if (data.alreadyRunning) {
+      showToast(t('toast.backupRunning'), 'warn');
+    }
   } else {
     showToast(data?.error || t('toast.backupFail'), 'error');
   }

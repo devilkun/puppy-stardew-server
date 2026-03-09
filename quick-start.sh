@@ -294,7 +294,7 @@ setup_directories() {
     print_step "Step 4: Setting up data directories..."
 
     # Create directories (including logs for log monitoring)
-    mkdir -p data/{saves,game,steam,logs,backups,custom-mods}
+    mkdir -p data/{saves,game,steam,logs,backups,custom-mods,panel}
 
     # Fix permissions (UID 1000 is the steam user in the container)
     print_info "Setting correct permissions (UID 1000)..."

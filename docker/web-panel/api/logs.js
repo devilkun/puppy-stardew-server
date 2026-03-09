@@ -25,6 +25,10 @@ function getLogSource(filter) {
     return { path: config.SMAPI_LOG, filtered: false };
   }
 
+  if (filter === 'mod' || filter === 'server' || filter === 'game') {
+    return { path: config.SMAPI_LOG, filtered: true };
+  }
+
   const categorizedPath = getCategorizedLogPath(filter);
   if (fs.existsSync(categorizedPath)) {
     return { path: categorizedPath, filtered: false };
@@ -36,9 +40,16 @@ function getLogSource(filter) {
 function matchesFilter(filter, line) {
   if (!line || filter === 'all' || filter === 'smapi') return true;
   if (filter === 'error') return /ERROR|FATAL|Exception/i.test(line);
-  if (filter === 'mod') return /\[\d{2}:\d{2}:\d{2}\s+(TRACE|DEBUG|INFO|WARN|ERROR)\s+[^\]]+\]/i.test(line);
-  if (filter === 'server') return /Server|Multiplayer|Connection|Player/i.test(line);
-  if (filter === 'game') return true;
+  if (filter === 'mod') {
+    return /\[\d{2}:\d{2}:\d{2}\s+(TRACE|DEBUG|INFO|WARN|ERROR)\s+(?!SMAPI\b|game\b)([^\]]+)\]/i.test(line);
+  }
+  if (filter === 'server') {
+    return /Starting LAN server|Starting server\. Protocol|ServerOfflineMode|Multiplayer|Connection|joined the game|left the game|farmhand|player connected|player disconnected|peer .* joined|peer .* left|client .* connected|client .* disconnected/i.test(line);
+  }
+  if (filter === 'game') {
+    return /\[\d{2}:\d{2}:\d{2}\s+(TRACE|DEBUG|INFO|WARN|ERROR)\s+game\]/i.test(line) &&
+      !matchesFilter('server', line);
+  }
   return true;
 }
 

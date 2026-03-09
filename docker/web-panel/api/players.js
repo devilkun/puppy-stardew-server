@@ -14,6 +14,18 @@ const MAX_PLAYER_HISTORY = 288; // 24h at 5-min intervals
 let connectedPlayers = [];
 let lastLogParse = 0;
 
+function normalizePlayerLabel(value) {
+  if (!value) {
+    return 'Player';
+  }
+
+  if (/^\d+$/.test(value)) {
+    return `Farmhand ${value.slice(-6)}`;
+  }
+
+  return value;
+}
+
 function parsePlayersFromLogs() {
   const now = Date.now();
   if (now - lastLogParse < 10000) return connectedPlayers; // Cache 10s
@@ -30,17 +42,31 @@ function parsePlayersFromLogs() {
     for (const line of lines) {
       // Detect player connections
       const joinMatch = line.match(/(\w+) connected/i) ||
-                        line.match(/peer (\w+) joined/i);
+                        line.match(/peer (\w+) joined/i) ||
+                        line.match(/(\w+) joined the game/i) ||
+                        line.match(/farmhand (\w+) connected/i) ||
+                        line.match(/client (\w+) connected/i) ||
+                        line.match(/Received connection for vanilla player ([A-Za-z0-9_]+)/i) ||
+                        line.match(/Approved request for farmhand ([A-Za-z0-9_]+)/i);
       if (joinMatch) {
-        const name = joinMatch[1];
-        if (name !== 'Server' && name !== 'SMAPI') {
-          players.set(name, { name, joinedAt: new Date().toISOString() });
+        const id = joinMatch[1];
+        if (id !== 'Server' && id !== 'SMAPI') {
+          players.set(id, {
+            id,
+            name: normalizePlayerLabel(id),
+            joinedAt: new Date().toISOString(),
+          });
         }
       }
 
       // Detect player disconnections
       const leaveMatch = line.match(/(\w+) disconnected/i) ||
-                         line.match(/peer (\w+) left/i);
+                         line.match(/peer (\w+) left/i) ||
+                         line.match(/(\w+) left the game/i) ||
+                         line.match(/farmhand (\w+) disconnected/i) ||
+                         line.match(/client (\w+) disconnected/i) ||
+                         line.match(/connection ([A-Za-z0-9_]+) disconnected/i) ||
+                         line.match(/player ([A-Za-z0-9_]+) disconnected/i);
       if (leaveMatch) {
         players.delete(leaveMatch[1]);
       }

@@ -303,6 +303,12 @@ if [ "$(id -u)" = "0" ]; then
         }
     fi
 
+    mkdir -p /home/steam/.local/share/puppy-stardew \
+             /home/steam/.local/share/puppy-stardew/logs \
+             /home/steam/.local/share/puppy-stardew/backups \
+             /home/steam/web-panel/data
+    chown -R 1000:1000 /home/steam/.local/share/puppy-stardew /home/steam/web-panel/data 2>/dev/null || true
+
     log_info "Switching to steam user..."
 
     # Re-execute this script as steam user

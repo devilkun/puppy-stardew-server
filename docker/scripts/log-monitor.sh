@@ -46,16 +46,17 @@ process_log_line() {
         echo "[$timestamp] $line" >> "$ERROR_LOG"
     fi
 
-    if echo "$line" | grep -qE "\[.*\]" | grep -qE "Always On Server|AutoHideHost|Server Auto Load"; then
+    if echo "$line" | grep -qE "\[[0-9]{2}:[0-9]{2}:[0-9]{2}\s+(TRACE|DEBUG|INFO|WARN|ERROR)\s+(Server Auto Load|Skill Level Guard|AutoHideHost|Always On Server|Save Backup)\]"; then
         echo "[$timestamp] $line" >> "$MOD_LOG"
     fi
 
-    if echo "$line" | grep -qE "Server|Multiplayer|Connection|Player"; then
+    if echo "$line" | grep -qEi "Starting LAN server|Starting server\. Protocol|ServerOfflineMode|Multiplayer|Connection|joined the game|left the game|farmhand|player connected|player disconnected|peer .* joined|peer .* left|client .* connected|client .* disconnected"; then
         echo "[$timestamp] $line" >> "$SERVER_LOG"
     fi
 
-    # Always append to general game log
-    echo "[$timestamp] $line" >> "$GAME_LOG"
+    if echo "$line" | grep -qE "\[[0-9]{2}:[0-9]{2}:[0-9]{2}\s+(TRACE|DEBUG|INFO|WARN|ERROR)\s+game\]"; then
+        echo "[$timestamp] $line" >> "$GAME_LOG"
+    fi
 }
 
 # Main monitoring loop

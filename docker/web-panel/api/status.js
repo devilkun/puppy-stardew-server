@@ -3,7 +3,7 @@
  */
 
 const fs = require('fs');
-const { execSync } = require('child_process');
+const { execSync, spawnSync } = require('child_process');
 const config = require('../server');
 
 // Status history (in-memory, last 1 hour, every 15s = 240 entries)
@@ -17,6 +17,90 @@ const statusSubscribers = new Set();
 let cachedStatus = null;
 let cacheTime = 0;
 const CACHE_TTL = 3000; // 3 seconds
+
+function readRecentLogLines(limit = 400) {
+  try {
+    if (!fs.existsSync(config.SMAPI_LOG)) {
+      return [];
+    }
+
+    return fs.readFileSync(config.SMAPI_LOG, 'utf-8')
+      .split('\n')
+      .filter(Boolean)
+      .slice(-limit);
+  } catch (error) {
+    return [];
+  }
+}
+
+function extractLogHints() {
+  const lines = readRecentLogLines(500);
+  let day = '';
+  const connectedPlayers = new Set();
+  let paused = false;
+
+  function addPlayer(id) {
+    if (id && id !== 'Server' && id !== 'SMAPI') {
+      connectedPlayers.add(id);
+    }
+  }
+
+  function removePlayer(id) {
+    if (id) {
+      connectedPlayers.delete(id);
+    }
+  }
+
+  for (const line of lines) {
+    const contextMatch = line.match(/Context:\s+loaded save '.*?', starting ([a-z]+ \d+ Y\d+)/i);
+    if (contextMatch) {
+      day = contextMatch[1];
+    }
+
+    const seasonMatch = line.match(/Season:\s*([a-z]+, Day \d+, Year \d+)/i);
+    if (seasonMatch) {
+      day = seasonMatch[1];
+    }
+
+    if (/Disconnected:\s*ServerOfflineMode/i.test(line)) {
+      paused = true;
+      connectedPlayers.clear();
+    }
+
+    if (/Starting LAN server|Starting server\. Protocol/i.test(line)) {
+      paused = false;
+    }
+
+    let match = line.match(/Received connection for vanilla player ([A-Za-z0-9_]+)/i) ||
+      line.match(/Approved request for farmhand ([A-Za-z0-9_]+)/i) ||
+      line.match(/([A-Za-z0-9_]+) joined the game/i) ||
+      line.match(/farmhand ([A-Za-z0-9_]+) connected/i) ||
+      line.match(/client ([A-Za-z0-9_]+) connected/i) ||
+      line.match(/peer ([A-Za-z0-9_]+) joined/i) ||
+      line.match(/([A-Za-z0-9_]+) connected/i);
+    if (match) {
+      addPlayer(match[1]);
+      paused = false;
+      continue;
+    }
+
+    match = line.match(/([A-Za-z0-9_]+) left the game/i) ||
+      line.match(/farmhand ([A-Za-z0-9_]+) disconnected/i) ||
+      line.match(/client ([A-Za-z0-9_]+) disconnected/i) ||
+      line.match(/peer ([A-Za-z0-9_]+) left/i) ||
+      line.match(/connection ([A-Za-z0-9_]+) disconnected/i) ||
+      line.match(/player ([A-Za-z0-9_]+) disconnected/i) ||
+      line.match(/([A-Za-z0-9_]+) disconnected/i);
+    if (match) {
+      removePlayer(match[1]);
+      if (connectedPlayers.size === 0) {
+        paused = true;
+      }
+    }
+  }
+
+  return { day, players: connectedPlayers.size, paused };
+}
 
 function normalizeJoinHost(host) {
   if (!host) return '';
@@ -75,6 +159,7 @@ function collectStatus(req = null) {
     modCount: 0,
     version: 'v1.0.66',
     scriptsHealthy: false,
+    paused: false,
     events: {
       passout: 0,
       readycheck: 0,
@@ -96,6 +181,7 @@ function collectStatus(req = null) {
       if (data.game) {
         status.players.online = data.game.players_online || 0;
         if (data.game.day) status.day = data.game.day;
+        if (typeof data.game.paused === 'boolean') status.paused = data.game.paused;
       }
       if (data.resources) {
         status.cpu = parseFloat(data.resources.cpu_percent) || 0;
@@ -118,6 +204,7 @@ function collectStatus(req = null) {
         status.memory.used = data.memory_usage_mb || 0;
         if (data.game_day) status.day = data.game_day;
         if (data.season) status.season = data.season;
+        if (typeof data.paused === 'boolean') status.paused = data.paused;
         status.events.passout = data.passout || 0;
         status.events.readycheck = data.readycheck || 0;
         status.events.offline = data.offline || 0;
@@ -156,6 +243,17 @@ function collectStatus(req = null) {
     }
   } catch (e) {
     // Process not found
+  }
+
+  const hints = extractLogHints();
+  if ((status.day === 'Unknown' || !status.day) && hints.day) {
+    status.day = hints.day;
+  }
+  if (status.players.online === 0 && hints.players > 0) {
+    status.players.online = hints.players;
+  }
+  if (hints.paused) {
+    status.paused = true;
   }
 
   if (!status.scriptsHealthy) {
@@ -240,9 +338,16 @@ function subscribeStatus(ws) {
 
 function restartServer(req, res) {
   try {
-    // Kill the game process, crash-monitor or entrypoint will restart it
-    execSync('pkill -f StardewModdingAPI || true', { encoding: 'utf-8' });
-    res.json({ success: true, message: 'Server restart initiated' });
+    const result = spawnSync('sh', ['-lc', 'pkill -f "StardewModdingAPI|Stardew Valley" >/dev/null 2>&1 || true'], {
+      encoding: 'utf-8',
+      timeout: 10000,
+    });
+
+    if (result.error) {
+      throw result.error;
+    }
+
+    res.json({ success: true, message: 'Game restart initiated' });
   } catch (e) {
     res.status(500).json({ error: 'Failed to restart server', details: e.message });
   }
