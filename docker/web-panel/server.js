@@ -11,7 +11,7 @@ const auth = require('./auth');
 
 // ─── Configuration ───────────────────────────────────────────────
 const PORT = parseInt(process.env.PANEL_PORT || '18642', 10);
-const PANEL_PASSWORD = process.env.PANEL_PASSWORD || 'stardew';
+const PANEL_PASSWORD = process.env.PANEL_PASSWORD || 'admin123';
 
 // Paths (inside container)
 const DATA_DIR = process.env.PANEL_DATA_DIR || path.join(__dirname, 'data');

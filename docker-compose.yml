@@ -88,9 +88,9 @@ services:
       # 存档选择 - 可选（默认：自动检测）
       - SAVE_NAME=${SAVE_NAME:-}
 
-      # Prometheus metrics port - OPTIONAL (default: 9090)
-      # Prometheus 指标端口 - 可选（默认：9090）
-      - METRICS_PORT=${METRICS_PORT:-9090}
+      # Web panel password - OPTIONAL (default: admin123)
+      # Web 面板密码 - 可选（默认：admin123）
+      - PANEL_PASSWORD=${PANEL_PASSWORD:-admin123}
 
     # Port mappings
     # 端口映射
@@ -154,7 +154,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.5'
+          cpus: '2.0'
           memory: 2G
         reservations:
           memory: 1G
