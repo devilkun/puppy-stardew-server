@@ -54,6 +54,9 @@ ask_question() {
     echo -e "${CYAN}❓ $1${NC}"
 }
 
+# Docker Compose 命令（全局变量，在 check_docker 中设置）
+COMPOSE_CMD=""
+
 # =============================================================================
 # 主要设置函数
 # =============================================================================
@@ -64,18 +67,10 @@ check_docker() {
     if ! command -v docker &> /dev/null; then
         print_error "Docker 未安装！"
         echo ""
-        echo "请先安装 Docker："
-        echo "  Ubuntu/Debian: curl -fsSL https://get.docker.com | sh"
-        echo "  其他系统: https://docs.docker.com/get-docker/"
+        echo "请运行以下命令安装 Docker："
+        echo -e "  ${CYAN}curl -fsSL https://get.docker.com | sh${NC}"
         echo ""
-        exit 1
-    fi
-
-    if ! docker compose version &> /dev/null; then
-        print_error "Docker Compose 不可用！"
-        echo ""
-        echo "请更新 Docker 到包含 Docker Compose 的新版本。"
-        echo "访问: https://docs.docker.com/compose/install/"
+        echo "其他系统请访问: https://docs.docker.com/get-docker/"
         echo ""
         exit 1
     fi
@@ -84,14 +79,74 @@ check_docker() {
         print_error "Docker 守护进程未运行或需要 sudo 权限！"
         echo ""
         echo "尝试以下方法之一："
-        echo "  1. 启动 Docker: sudo systemctl start docker"
-        echo "  2. 将用户添加到 docker 组: sudo usermod -aG docker \$USER"
+        echo -e "  1. 启动 Docker: ${CYAN}sudo systemctl start docker${NC}"
+        echo -e "  2. 将用户添加到 docker 组: ${CYAN}sudo usermod -aG docker \$USER${NC}"
         echo "     (然后注销并重新登录)"
         echo ""
         exit 1
     fi
 
-    print_success "Docker 已安装并正在运行！"
+    # 检测 Docker Compose 可用性
+    if docker compose version &> /dev/null; then
+        COMPOSE_CMD="docker compose"
+        print_success "Docker 已安装并正在运行！（Docker Compose v2）"
+    elif command -v docker-compose &> /dev/null; then
+        COMPOSE_CMD="docker-compose"
+        print_success "Docker 已安装并正在运行！（Docker Compose v1）"
+    else
+        # 尝试自动安装 docker-compose-plugin
+        print_warning "Docker Compose 未安装，正在尝试自动安装..."
+        echo ""
+
+        INSTALL_SUCCESS=false
+
+        # 方法 1: apt (Ubuntu/Debian)
+        if command -v apt-get &> /dev/null; then
+            print_info "检测到 apt 包管理器，正在安装 docker-compose-plugin..."
+            if apt-get update -qq &> /dev/null && apt-get install -y -qq docker-compose-plugin &> /dev/null; then
+                INSTALL_SUCCESS=true
+            fi
+        fi
+
+        # 方法 2: yum (CentOS/RHEL)
+        if [ "$INSTALL_SUCCESS" = "false" ] && command -v yum &> /dev/null; then
+            print_info "检测到 yum 包管理器，正在安装 docker-compose-plugin..."
+            if yum install -y docker-compose-plugin &> /dev/null; then
+                INSTALL_SUCCESS=true
+            fi
+        fi
+
+        # 方法 3: dnf (Fedora)
+        if [ "$INSTALL_SUCCESS" = "false" ] && command -v dnf &> /dev/null; then
+            print_info "检测到 dnf 包管理器，正在安装 docker-compose-plugin..."
+            if dnf install -y docker-compose-plugin &> /dev/null; then
+                INSTALL_SUCCESS=true
+            fi
+        fi
+
+        # 验证安装结果
+        if [ "$INSTALL_SUCCESS" = "true" ] && docker compose version &> /dev/null; then
+            COMPOSE_CMD="docker compose"
+            print_success "Docker Compose 已自动安装成功！"
+        else
+            # 自动安装失败，给出具体的手动安装命令
+            print_error "Docker Compose 自动安装失败！"
+            echo ""
+            print_info "请手动运行以下命令安装："
+            echo ""
+            if command -v apt-get &> /dev/null; then
+                echo -e "  ${CYAN}sudo apt-get update && sudo apt-get install -y docker-compose-plugin${NC}"
+            elif command -v yum &> /dev/null; then
+                echo -e "  ${CYAN}sudo yum install -y docker-compose-plugin${NC}"
+            else
+                echo -e "  ${CYAN}sudo apt-get update && sudo apt-get install -y docker-compose-plugin${NC}"
+            fi
+            echo ""
+            echo "安装完成后，重新运行此脚本即可。"
+            echo ""
+            exit 1
+        fi
+    fi
 }
 
 download_files() {
@@ -228,7 +283,7 @@ start_server() {
     print_info "拉取 Docker 镜像（可能需要几分钟）..."
     echo ""
     # 显示拉取进度
-    if docker compose pull; then
+    if $COMPOSE_CMD pull; then
         print_success "镜像拉取完成！"
     else
         print_warning "拉取镜像时出现错误，尝试启动..."
@@ -236,13 +291,13 @@ start_server() {
 
     echo ""
     print_info "启动服务器..."
-    if docker compose up -d; then
+    if $COMPOSE_CMD up -d; then
         print_success "服务器已启动！"
     else
         print_error "启动失败！"
         echo ""
         echo "查看日志以了解详情:"
-        echo -e "  ${CYAN}docker compose logs${NC}"
+        echo -e "  ${CYAN}$COMPOSE_CMD logs${NC}"
         exit 1
     fi
 
@@ -335,8 +390,8 @@ print_next_steps() {
 
     echo -e "${BOLD}常用命令：${NC}"
     echo -e "   查看日志:        ${CYAN}docker logs -f puppy-stardew${NC}"
-    echo -e "   重启服务器:      ${CYAN}docker compose down && docker compose up -d${NC}"
-    echo -e "   停止服务器:      ${CYAN}docker compose down${NC}"
+    echo -e "   重启服务器:      ${CYAN}$COMPOSE_CMD down && $COMPOSE_CMD up -d${NC}"
+    echo -e "   停止服务器:      ${CYAN}$COMPOSE_CMD down${NC}"
     echo -e "   检查健康:        ${CYAN}./health-check.sh${NC}"
     echo -e "   备份存档:        ${CYAN}./backup.sh${NC}"
     echo ""

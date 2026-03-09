@@ -56,6 +56,9 @@ ask_question() {
     echo -e "${CYAN}❓ $1${NC}"
 }
 
+# Docker Compose command (global variable, set in check_docker)
+COMPOSE_CMD=""
+
 # =============================================================================
 # Main Setup Functions
 # =============================================================================
@@ -66,18 +69,10 @@ check_docker() {
     if ! command -v docker &> /dev/null; then
         print_error "Docker is not installed!"
         echo ""
-        echo "Please install Docker first:"
-        echo "  Ubuntu/Debian: curl -fsSL https://get.docker.com | sh"
-        echo "  Other systems: https://docs.docker.com/get-docker/"
+        echo "Please run the following command to install Docker:"
+        echo -e "  ${CYAN}curl -fsSL https://get.docker.com | sh${NC}"
         echo ""
-        exit 1
-    fi
-
-    if ! docker compose version &> /dev/null; then
-        print_error "Docker Compose is not available!"
-        echo ""
-        echo "Please update Docker to a newer version that includes Docker Compose."
-        echo "Visit: https://docs.docker.com/compose/install/"
+        echo "Other systems: https://docs.docker.com/get-docker/"
         echo ""
         exit 1
     fi
@@ -86,14 +81,74 @@ check_docker() {
         print_error "Docker daemon is not running or requires sudo!"
         echo ""
         echo "Try one of these:"
-        echo "  1. Start Docker: sudo systemctl start docker"
-        echo "  2. Add your user to docker group: sudo usermod -aG docker \$USER"
+        echo -e "  1. Start Docker: ${CYAN}sudo systemctl start docker${NC}"
+        echo -e "  2. Add your user to docker group: ${CYAN}sudo usermod -aG docker \$USER${NC}"
         echo "     (Then log out and back in)"
         echo ""
         exit 1
     fi
 
-    print_success "Docker is installed and running!"
+    # Detect Docker Compose availability
+    if docker compose version &> /dev/null; then
+        COMPOSE_CMD="docker compose"
+        print_success "Docker is installed and running! (Docker Compose v2)"
+    elif command -v docker-compose &> /dev/null; then
+        COMPOSE_CMD="docker-compose"
+        print_success "Docker is installed and running! (Docker Compose v1)"
+    else
+        # Try to auto-install docker-compose-plugin
+        print_warning "Docker Compose not found, attempting auto-install..."
+        echo ""
+
+        INSTALL_SUCCESS=false
+
+        # Method 1: apt (Ubuntu/Debian)
+        if command -v apt-get &> /dev/null; then
+            print_info "Detected apt package manager, installing docker-compose-plugin..."
+            if apt-get update -qq &> /dev/null && apt-get install -y -qq docker-compose-plugin &> /dev/null; then
+                INSTALL_SUCCESS=true
+            fi
+        fi
+
+        # Method 2: yum (CentOS/RHEL)
+        if [ "$INSTALL_SUCCESS" = "false" ] && command -v yum &> /dev/null; then
+            print_info "Detected yum package manager, installing docker-compose-plugin..."
+            if yum install -y docker-compose-plugin &> /dev/null; then
+                INSTALL_SUCCESS=true
+            fi
+        fi
+
+        # Method 3: dnf (Fedora)
+        if [ "$INSTALL_SUCCESS" = "false" ] && command -v dnf &> /dev/null; then
+            print_info "Detected dnf package manager, installing docker-compose-plugin..."
+            if dnf install -y docker-compose-plugin &> /dev/null; then
+                INSTALL_SUCCESS=true
+            fi
+        fi
+
+        # Verify installation result
+        if [ "$INSTALL_SUCCESS" = "true" ] && docker compose version &> /dev/null; then
+            COMPOSE_CMD="docker compose"
+            print_success "Docker Compose auto-installed successfully!"
+        else
+            # Auto-install failed, provide specific manual install command
+            print_error "Docker Compose auto-install failed!"
+            echo ""
+            print_info "Please run the following command to install manually:"
+            echo ""
+            if command -v apt-get &> /dev/null; then
+                echo -e "  ${CYAN}sudo apt-get update && sudo apt-get install -y docker-compose-plugin${NC}"
+            elif command -v yum &> /dev/null; then
+                echo -e "  ${CYAN}sudo yum install -y docker-compose-plugin${NC}"
+            else
+                echo -e "  ${CYAN}sudo apt-get update && sudo apt-get install -y docker-compose-plugin${NC}"
+            fi
+            echo ""
+            echo "After installation, re-run this script."
+            echo ""
+            exit 1
+        fi
+    fi
 }
 
 download_files() {
@@ -270,11 +325,11 @@ start_server() {
 
     echo ""
     print_info "Pulling Docker image (this may take a few minutes)..."
-    docker compose pull
+    $COMPOSE_CMD pull
 
     echo ""
     print_info "Starting server..."
-    docker compose up -d
+    $COMPOSE_CMD up -d
 
     print_success "Server started!"
 
@@ -349,8 +404,8 @@ show_next_steps() {
 
     echo -e "${BOLD}Useful commands:${NC}"
     echo -e "   View logs:        ${CYAN}docker logs -f puppy-stardew${NC}"
-    echo -e "   Restart server:   ${CYAN}docker compose down && docker compose up -d${NC}"
-    echo -e "   Stop server:      ${CYAN}docker compose down${NC}"
+    echo -e "   Restart server:   ${CYAN}$COMPOSE_CMD down && $COMPOSE_CMD up -d${NC}"
+    echo -e "   Stop server:      ${CYAN}$COMPOSE_CMD down${NC}"
     echo -e "   Check health:     ${CYAN}./health-check.sh${NC}"
     echo -e "   Backup saves:     ${CYAN}./backup.sh${NC}"
     echo ""
