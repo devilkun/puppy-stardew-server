@@ -387,7 +387,14 @@ show_next_steps() {
     echo -e "   - Then press ${YELLOW}Ctrl+P Ctrl+Q${NC} to detach (${RED}NOT Ctrl+C!${NC})"
     echo ""
 
-    echo -e "${BOLD}3. Initial setup via VNC (first time only):${NC}"
+    echo -e "${BOLD}3. 🌐 Web Management Panel (Recommended):${NC}"
+    echo -e "   - Browser access: ${CYAN}http://$(get_server_ip):18642${NC}"
+    echo -e "   - Default login: ${CYAN}admin${NC} / password: ${CYAN}admin123${NC}"
+    echo -e "   - ${YELLOW}⚠️  Change password immediately after first login!${NC}"
+    echo "   - Features: real-time status, logs, terminal, save management"
+    echo ""
+
+    echo -e "${BOLD}4. Or initial setup via VNC (first time only):${NC}"
     echo "   - Download a VNC client (RealVNC, TightVNC, etc.)"
     echo -e "   - Connect to: ${CYAN}$(get_server_ip):5900${NC}"
     echo -e "   - Password: ${CYAN}$(grep VNC_PASSWORD .env | cut -d'=' -f2)${NC}"
@@ -395,7 +402,7 @@ show_next_steps() {
     echo "   - The save will auto-load on future restarts!"
     echo ""
 
-    echo -e "${BOLD}4. Players can connect:${NC}"
+    echo -e "${BOLD}5. Players can connect:${NC}"
     echo "   - Open Stardew Valley"
     echo "   - Click \"Co-op\" → \"Join LAN Game\""
     echo "   - Server will appear automatically, or enter server IP manually"
