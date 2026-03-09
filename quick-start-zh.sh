@@ -401,14 +401,72 @@ print_next_steps() {
     echo -e "${GREEN}${BOLD}🌟 享受您的即时睡眠星露谷服务器！${NC}"
     echo ""
 
-    # 询问是否查看日志
-    ask_question "现在要查看日志吗？(y/n)"
-    read -r watch_logs </dev/tty
-    if [[ $watch_logs =~ ^[Yy]$ ]]; then
+    # 智能检测是否需要 Steam Guard 验证码
+    echo ""
+    print_info "正在检测服务器状态..."
+    sleep 2
+
+    NEEDS_STEAM_GUARD=false
+    RECENT_LOGS=$(docker logs --tail 50 puppy-stardew 2>&1 || true)
+    if echo "$RECENT_LOGS" | grep -qi "steam guard\|two-factor\|two factor\|auth code\|verification code\|Enter the current code"; then
+        NEEDS_STEAM_GUARD=true
+    fi
+
+    if [ "$NEEDS_STEAM_GUARD" = "true" ]; then
         echo ""
-        print_info "显示日志...（按 Ctrl+C 退出）"
+        print_warning "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        print_warning "  检测到 Steam 需要验证码！"
+        print_warning "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo ""
-        docker logs -f puppy-stardew
+        print_info "您需要附加到容器来输入 Steam Guard 验证码。"
+        print_info "请按以下步骤操作："
+        echo ""
+        echo -e "  ${CYAN}1.${NC} 运行: ${CYAN}docker attach puppy-stardew${NC}"
+        echo -e "  ${CYAN}2.${NC} 输入邮件/手机应用中收到的验证码，按回车"
+        echo -e "  ${CYAN}3.${NC} 等待 3-5 秒确认游戏开始下载"
+        echo -e "  ${CYAN}4.${NC} 按 ${YELLOW}Ctrl+P Ctrl+Q${NC} 分离容器（${RED}不要按 Ctrl+C！${NC}）"
+        echo ""
+        ask_question "现在自动附加到容器输入验证码吗？(y/n)"
+        read -r do_attach </dev/tty
+        if [[ $do_attach =~ ^[Yy]$ ]]; then
+            echo ""
+            print_warning "正在附加到容器...输入验证码后按 Ctrl+P Ctrl+Q 分离"
+            print_warning "（如果没有显示提示，按回车即可看到）"
+            echo ""
+            docker attach puppy-stardew
+        fi
+    else
+        echo ""
+        ask_question "请选择下一步操作："
+        echo -e "  ${CYAN}1${NC} - 查看实时日志（只读，按 Ctrl+C 退出）"
+        echo -e "  ${CYAN}2${NC} - 附加到容器（可交互输入，如需要输入验证码）"
+        echo -e "  ${CYAN}3${NC} - 退出脚本（稍后手动查看）"
+        echo ""
+        read -r choice </dev/tty
+        case "$choice" in
+            1)
+                echo ""
+                print_info "显示实时日志...（按 Ctrl+C 退出）"
+                print_info "提示：如果日志中出现验证码提示，请按 Ctrl+C 退出，"
+                print_info "然后运行 ${CYAN}docker attach puppy-stardew${NC} 来输入验证码。"
+                echo ""
+                docker logs -f puppy-stardew
+                ;;
+            2)
+                echo ""
+                print_info "附加到容器...（按 Ctrl+P Ctrl+Q 分离，${RED}不要按 Ctrl+C！${NC}）"
+                print_info "如果没有显示提示，按回车即可看到。"
+                echo ""
+                docker attach puppy-stardew
+                ;;
+            *)
+                echo ""
+                print_info "您可以稍后使用以下命令："
+                echo -e "   查看日志:     ${CYAN}docker logs -f puppy-stardew${NC}"
+                echo -e "   输入验证码:   ${CYAN}docker attach puppy-stardew${NC}"
+                echo ""
+                ;;
+        esac
     fi
 }
 
