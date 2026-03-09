@@ -203,7 +203,7 @@ configure_steam() {
         read -r steam_username </dev/tty
 
         echo ""
-        ask_question "请输入您的 Steam 密码："
+        ask_question "请输入您的 Steam 密码（输入时不会显示，直接输入后按回车）："
         read -rs steam_password </dev/tty
         echo ""
 
@@ -426,47 +426,13 @@ print_next_steps() {
         echo -e "  ${CYAN}3.${NC} 等待 3-5 秒确认游戏开始下载"
         echo -e "  ${CYAN}4.${NC} 按 ${YELLOW}Ctrl+P Ctrl+Q${NC} 分离容器（${RED}不要按 Ctrl+C！${NC}）"
         echo ""
-        ask_question "现在自动附加到容器输入验证码吗？(y/n)"
-        read -r do_attach </dev/tty
-        if [[ $do_attach =~ ^[Yy]$ ]]; then
-            echo ""
-            print_warning "正在附加到容器...输入验证码后按 Ctrl+P Ctrl+Q 分离"
-            print_warning "（如果没有显示提示，按回车即可看到）"
-            echo ""
-            docker attach puppy-stardew
-        fi
     else
         echo ""
         ask_question "请选择下一步操作："
-        echo -e "  ${CYAN}1${NC} - 查看实时日志（只读，按 Ctrl+C 退出）"
-        echo -e "  ${CYAN}2${NC} - 附加到容器（可交互输入，如需要输入验证码）"
-        echo -e "  ${CYAN}3${NC} - 退出脚本（稍后手动查看）"
+        echo -e "  ${CYAN}1${NC} - 查看实时日志: ${CYAN}docker logs -f puppy-stardew${NC}"
+        echo -e "  ${CYAN}2${NC} - 附加到容器（可交互输入验证码）: ${CYAN}docker attach puppy-stardew${NC}"
         echo ""
-        read -r choice </dev/tty
-        case "$choice" in
-            1)
-                echo ""
-                print_info "显示实时日志...（按 Ctrl+C 退出）"
-                print_info "提示：如果日志中出现验证码提示，请按 Ctrl+C 退出，"
-                print_info "然后运行 ${CYAN}docker attach puppy-stardew${NC} 来输入验证码。"
-                echo ""
-                docker logs -f puppy-stardew
-                ;;
-            2)
-                echo ""
-                print_info "附加到容器...（按 Ctrl+P Ctrl+Q 分离，${RED}不要按 Ctrl+C！${NC}）"
-                print_info "如果没有显示提示，按回车即可看到。"
-                echo ""
-                docker attach puppy-stardew
-                ;;
-            *)
-                echo ""
-                print_info "您可以稍后使用以下命令："
-                echo -e "   查看日志:     ${CYAN}docker logs -f puppy-stardew${NC}"
-                echo -e "   输入验证码:   ${CYAN}docker attach puppy-stardew${NC}"
-                echo ""
-                ;;
-        esac
+        print_info "您可以直接复制上方命令在终端执行。"
     fi
 }
 

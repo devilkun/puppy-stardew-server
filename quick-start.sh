@@ -440,47 +440,13 @@ show_next_steps() {
         echo -e "  ${CYAN}3.${NC} Wait 3-5 seconds to confirm game download starts"
         echo -e "  ${CYAN}4.${NC} Press ${YELLOW}Ctrl+P Ctrl+Q${NC} to detach (${RED}NOT Ctrl+C!${NC})"
         echo ""
-        ask_question "Auto-attach to container to enter the code now? (y/n)"
-        read -r do_attach </dev/tty
-        if [[ $do_attach =~ ^[Yy]$ ]]; then
-            echo ""
-            print_warning "Attaching to container... Enter code then press Ctrl+P Ctrl+Q to detach"
-            print_warning "(If no prompt appears, press Enter to see it)"
-            echo ""
-            docker attach puppy-stardew
-        fi
     else
         echo ""
         ask_question "What would you like to do next?"
-        echo -e "  ${CYAN}1${NC} - View live logs (read-only, press Ctrl+C to exit)"
-        echo -e "  ${CYAN}2${NC} - Attach to container (interactive, for entering verification code)"
-        echo -e "  ${CYAN}3${NC} - Exit script (check manually later)"
+        echo -e "  ${CYAN}1${NC} - View live logs: ${CYAN}docker logs -f puppy-stardew${NC}"
+        echo -e "  ${CYAN}2${NC} - Attach to container (for entering verification code): ${CYAN}docker attach puppy-stardew${NC}"
         echo ""
-        read -r choice </dev/tty
-        case "$choice" in
-            1)
-                echo ""
-                print_info "Showing live logs... (Press Ctrl+C to exit)"
-                print_info "Tip: If you see a verification code prompt in the logs,"
-                print_info "press Ctrl+C and run ${CYAN}docker attach puppy-stardew${NC} to enter the code."
-                echo ""
-                docker logs -f puppy-stardew
-                ;;
-            2)
-                echo ""
-                print_info "Attaching to container... (Press Ctrl+P Ctrl+Q to detach, ${RED}NOT Ctrl+C!${NC})"
-                print_info "If no prompt appears, press Enter to see it."
-                echo ""
-                docker attach puppy-stardew
-                ;;
-            *)
-                echo ""
-                print_info "You can use these commands later:"
-                echo -e "   View logs:          ${CYAN}docker logs -f puppy-stardew${NC}"
-                echo -e "   Enter auth code:    ${CYAN}docker attach puppy-stardew${NC}"
-                echo ""
-                ;;
-        esac
+        print_info "You can copy and run the commands above in your terminal."
     fi
 }
 
