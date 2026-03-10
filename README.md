@@ -857,6 +857,5 @@ If this project helps you, consider giving it a star! ⭐
 
 <div align="center">
 
-**Made with ❤️ for the Stardew Valley community**
 
 </div>

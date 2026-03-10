@@ -819,6 +819,5 @@ docker compose up -d
 
 **为星露谷物语社区用爱制作**
 
-Made with ❤️ for the Stardew Valley Community
 
 </div>
