@@ -252,10 +252,15 @@ services:
     ports:
       - "24642:24642/udp"
       - "5900:5900/tcp"
+      - "18642:18642/tcp"
     volumes:
       - ./data/saves:/home/steam/.config/StardewValley:rw
       - ./data/game:/home/steam/stardewvalley:rw
       - ./data/steam:/home/steam/Steam:rw
+      - ./data/logs:/home/steam/.local/share/puppy-stardew/logs:rw
+      - ./data/backups:/home/steam/.local/share/puppy-stardew/backups:rw
+      - ./data/panel:/home/steam/web-panel/data:rw
+      - ./data/custom-mods:/home/steam/custom-mods:rw
     deploy:
       resources:
         limits:
@@ -290,7 +295,7 @@ nano .env  # 或使用 vi、vim 等编辑器
 
 ```bash
 # 创建数据目录并设置正确权限
-mkdir -p data/{saves,game,steam,logs,backups,custom-mods}
+mkdir -p data/{saves,game,steam,logs,backups,panel,custom-mods}
 chown -R 1000:1000 data/
 ```
 
